@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Folder Analyzer Pro - Multi Job Edition</title>
+    <title>Folder Analyzer Pro - PLC Pattern Edition</title>
     <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.min.js"></script>
     <style>
         /* --- BASE STYLES --- */
@@ -202,7 +202,6 @@
             border: 1px solid #e2e8f0;
         }
 
-        /* --- RENAME BANNER --- */
         .banner {
             background-color: #fef3c7;
             border-left: 4px solid #d97706;
@@ -337,7 +336,7 @@
             box-sizing: border-box;
         }
         
-        .ext-zap { background-color: #fef3c7; color: #d97706; border: 1px solid #f59e0b; }
+        .ext-zap, .ext-zap16, .ext-zap17, .ext-zap18 { background-color: #fef3c7; color: #d97706; border: 1px solid #f59e0b; }
         .ext-pdf { background-color: #fee2e2; color: #dc2626; border: 1px solid #f87171; }
         .ext-zip { background-color: #e0f2fe; color: #0369a1; border: 1px solid #38bdf8; }
         .ext-txt { background-color: #f1f5f9; color: #475569; border: 1px solid #94a3b8; }
@@ -456,7 +455,7 @@
 
             <div id="rename-preview-container" class="preview-rename-panel hidden">
                 <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #f59e0b; padding-bottom:8px; margin-bottom:10px;">
-                    <strong style="color:#b45309; font-size:1rem;">✏️ Rilevati File da Rinominare (Case Insensitive / Nomi Simili)</strong>
+                    <strong style="color:#b45309; font-size:1rem;">✏️ Rilevati File con Nome Fuori Standard (Rinomina Suggerita)</strong>
                     <button class="btn-rename-all" id="btn-rename-all-files">Rinomina Tutti i File Rilevati</button>
                 </div>
                 <table class="job-table" style="background:white; border-radius:6px;">
@@ -464,7 +463,7 @@
                         <tr>
                             <th>Percorso Cartella</th>
                             <th>Nome Attuale (Errato)</th>
-                            <th>Nuovo Nome Corretto (Da Master)</th>
+                            <th>Nuovo Nome Standard Modello</th>
                             <th>Azione</th>
                         </tr>
                     </thead>
@@ -538,7 +537,7 @@
     let jobsDataset = {}; 
     let activeJobKey = null; 
     let comparisonData = {};
-    let renameSuggestionsList = []; // Global checklist for file renaming preview
+    let renameSuggestionsList = []; 
     let scaffolderMasterTree = {};
     let mainRootDirectoryHandle = null; 
     let activeJobDirectoryHandle = null; 
@@ -570,6 +569,12 @@
         return match ? match[1].toUpperCase() : "C0XXX";
     }
 
+    function extractSubMachineCode(folderName) {
+        const regex = /^([cC]\d+[\s\-_]*\d+)/i;
+        const match = folderName.match(regex);
+        return match ? match[1].toUpperCase().replace(/\s+/g, '') : null;
+    }
+
     // --- FILE SYSTEM SCANNER ---
     async function handleDirectoryScan(dirHandle) {
         const virtualRoot = { children: {}, containedFiles: [] };
@@ -587,7 +592,7 @@
         return virtualRoot.children;
     }
 
-    // --- BINDING SELECTORS ---
+    // --- SELECTORS BINDING ---
     document.getElementById('master-btn').addEventListener('click', async () => {
         try {
             const handle = await window.showDirectoryPicker();
@@ -621,7 +626,7 @@
         } catch (err) { console.error(err); }
     });
 
-    // --- SCANNER MULTI COMMESSA ---
+    // --- MULTI JOB PROCESSOR ---
     async function processMultiJobDirectory() {
         jobsDataset = {};
         const tbody = document.getElementById('job-table-body');
@@ -636,8 +641,7 @@
                     const jobHandle = await mainRootDirectoryHandle.getDirectoryHandle(entry.name);
                     const parsedSubtree = await handleDirectoryScan(jobHandle);
                     
-                    const mockCurrentRootName = entry.name;
-                    const calculatedComparison = compareTreesWithContext(masterTree, parsedSubtree, mockCurrentRootName);
+                    const calculatedComparison = compareTreesWithContext(masterTree, parsedSubtree, entry.name);
                     const metrics = calculateMetricsForTree(calculatedComparison);
 
                     jobsDataset[entry.name] = {
@@ -721,7 +725,6 @@
 
         document.getElementById('results-panel').classList.remove('hidden');
         
-        // Build rename suggestions list before rendering view
         renameSuggestionsList = [];
         buildRenameSuggestionsDeep(comparisonData, []);
         renderRenamePreviewTable();
@@ -729,7 +732,6 @@
         applyFiltersAndRender();
     }
 
-    // --- COIL RENAME SUGGESTIONS LOGIC (NEW ENGINE) ---
     function buildRenameSuggestionsDeep(nodeBranch, currentPath) {
         for (const key in nodeBranch) {
             if (key === 'containedFiles') continue;
@@ -790,17 +792,15 @@
             if (await activeJobDirectoryHandle.requestPermission(writeOptions) !== 'granted') return;
         }
 
-        const msg = `Sei sicuro di voler rinominare il file?\n\nDa: ${suggestionObj.currentName}\nA: ${suggestionObj.targetName}\n\nNota: Verrà creata una copia corretta e rimosso il vecchio file.`;
+        const msg = `Sei sicuro di voler rinominare il file?\n\nDa: ${suggestionObj.currentName}\nA: ${suggestionObj.targetName}\n\nNota: Sarà creata la copia standard conforme e rimosso il file vecchio originale.`;
         if (!confirm(msg)) return;
 
         try {
-            // Navigate directory handles deep path
             let targetDirectoryHandle = activeJobDirectoryHandle;
             for (const folder of suggestionObj.folderPath) {
                 targetDirectoryHandle = await targetDirectoryHandle.getDirectoryHandle(folder);
             }
 
-            // Execute copy process
             const sourceFileHandle = await targetDirectoryHandle.getFileHandle(suggestionObj.currentName);
             const sourceFile = await sourceFileHandle.getFile();
             
@@ -809,12 +809,10 @@
             await writableStream.write(sourceFile);
             await writableStream.close();
 
-            // Execute cleanup deletion process
             await targetDirectoryHandle.removeEntry(suggestionObj.currentName);
 
             alert(`File "${suggestionObj.targetName}" rinominato con successo!`);
             
-            // Reload status dataset
             jobsDataset[activeJobKey].tree = await handleDirectoryScan(activeJobDirectoryHandle);
             jobsDataset[activeJobKey].comparison = compareTreesWithContext(masterTree, jobsDataset[activeJobKey].tree, activeJobKey);
             renderTreeDashboard(activeJobKey);
@@ -827,9 +825,8 @@
 
     document.getElementById('btn-rename-all-files').addEventListener('click', async () => {
         if (renameSuggestionsList.length === 0) return;
-        if (!confirm(`Vuoi procedere alla rinomina cumulativa di tutti i ${renameSuggestionsList.length} file rilevati?`)) return;
+        if (!confirm(`Vuoi procedere alla rinomina automatica di tutti i ${renameSuggestionsList.length} file rilevati?`)) return;
 
-        // Perform sequential batch execution
         for (const item of renameSuggestionsList) {
             try {
                 let targetDirectoryHandle = activeJobDirectoryHandle;
@@ -846,18 +843,18 @@
 
                 await targetDirectoryHandle.removeEntry(item.currentName);
             } catch (err) {
-                console.error("Batch item error:", err);
+                console.error("Batch error item:", err);
             }
         }
 
-        alert("Operazione di rinomina di massa completata!");
+        alert("Operazione di rinomina cumulativa completata!");
         jobsDataset[activeJobKey].tree = await handleDirectoryScan(activeJobDirectoryHandle);
         jobsDataset[activeJobKey].comparison = compareTreesWithContext(masterTree, jobsDataset[activeJobKey].tree, activeJobKey);
         renderTreeDashboard(activeJobKey);
         renderMultiJobDashboard();
     });
 
-    // --- UTILITIES ANALISI SPECIFICHE ---
+    // --- CORE LOGIC IMPLEMENTATION ---
     function calculateMetricsForTree(tree) {
         let match = 0, missing = 0, extra = 0, critical = 0;
         function scan(node) {
@@ -874,7 +871,7 @@
                         const s = item.containedFiles[f].status;
                         if (s === 'missing') missing++;
                         if (s === 'extra') extra++;
-                        if (s === 'rename-suggested') missing++; // Counts towards deviations to fix
+                        if (s === 'rename-suggested') missing++; 
                         if (s === 'match') match++;
                     }
                 }
@@ -912,11 +909,11 @@
                     if (plcFolderRef) {
                         if (isTreeBranchCompletelyEmpty(plcFolderRef)) branchStatus = 'empty-error';
                         else {
-                            let zapArchivedDetected = scanTreeBranchForExtension(plcFolderRef, ".zap");
+                            let zapArchivedDetected = scanTreeBranchForExtension(plcFolderRef, ".zap") || scanTreeBranchForExtension(plcFolderRef, ".zip");
                             if (!zapArchivedDetected) {
                                 for (const subKey in targetSubtree) {
                                     if (subKey.toLowerCase().includes("display") || subKey.toLowerCase().includes("hmi") || subKey.toLowerCase().includes("40.")) {
-                                        if (scanTreeBranchForExtension(targetSubtree[subKey], ".zap")) { zapArchivedDetected = true; break; }
+                                        if (scanTreeBranchForExtension(targetSubtree[subKey], ".zap") || scanTreeBranchForExtension(targetSubtree[subKey], ".zip")) { zapArchivedDetected = true; break; }
                                     }
                                 }
                                 if (!zapArchivedDetected) branchStatus = 'zap-error';
@@ -926,16 +923,19 @@
                         let backupZapCheck = false;
                         for (const subKey in targetSubtree) {
                             if (subKey.toLowerCase().includes("display") || subKey.toLowerCase().includes("hmi") || subKey.toLowerCase().includes("40.")) {
-                                if (scanTreeBranchForExtension(targetSubtree[subKey], ".zap")) { backupZapCheck = true; break; }
+                                if (scanTreeBranchForExtension(targetSubtree[subKey], ".zap") || scanTreeBranchForExtension(targetSubtree[subKey], ".zip")) { backupZapCheck = true; break; }
                             }
                         }
                         if (!backupZapCheck) branchStatus = 'zap-error';
                     }
 
+                    // Extract context string for dynamic file resolution in this specific machine node
+                    const explicitMachineCode = extractSubMachineCode(targetKey) || activeJobCode;
+
                     mergedResult[targetKey] = {
                         isDir: true,
                         status: branchStatus,
-                        containedFiles: compareFilesList(master[masterMachineKey].containedFiles || [], target[targetKey].containedFiles || [], activeJobCode),
+                        containedFiles: compareFilesList(master[masterMachineKey].containedFiles || [], target[targetKey].containedFiles || [], explicitMachineCode),
                         children: compareTreesWithContext(master[masterMachineKey].children || {}, targetSubtree, rootNameContext)
                     };
                 }
@@ -1026,27 +1026,24 @@
         return null;
     }
 
-    // --- ENHANCED FILE COMPARATOR WITH INTELLIGENT RENAME DETECTION ---
+    // --- SMART PLC PATTERN COMPLIANCE FILE ENGINE ---
     function compareFilesList(masterFiles, targetFiles, activeJobCode) {
         const fileEvaluation = {};
         const filteredMaster = masterFiles.filter(f => f.toLowerCase() !== "pippo.txt");
         const filteredTarget = targetFiles.filter(f => f.toLowerCase() !== "pippo.txt");
 
-        // Map expected target filenames by dynamic evaluation rules
         const masterExpectationsMap = {};
         filteredMaster.forEach(mFile => {
             const dynamicExpectedName = mFile.replace(/C0xxx/gi, activeJobCode);
             masterExpectationsMap[dynamicExpectedName.toLowerCase()] = dynamicExpectedName;
         });
 
-        // Evaluate target inventory files
         const unmatchedTargetFiles = [];
         filteredTarget.forEach(tFile => {
             const tFileLower = tFile.toLowerCase();
             if (masterExpectationsMap[tFileLower]) {
                 const correctCaseName = masterExpectationsMap[tFileLower];
                 if (tFile !== correctCaseName) {
-                    // Match found but casing mismatch (Rename recommendation trigger point)
                     fileEvaluation[tFile] = { 
                         isDir: false, 
                         status: 'rename-suggested', 
@@ -1061,22 +1058,82 @@
             }
         });
 
-        // Scan leftover unmatched target entries against remaining master requirements (Similarity lookups)
+        // Advanced dynamic rule parsing for unmatched software files (.zip / .zap*)
         unmatchedTargetFiles.forEach(tFile => {
-            if (fileEvaluation[tFile]) return; // Handled
+            if (fileEvaluation[tFile]) return; 
 
+            const extensionMatch = tFile.match(/\.(zip|zap\d*)$/i);
+            if (extensionMatch) {
+                const fileExt = extensionMatch[0]; // Retain exact archive casing extension
+
+                // Search inside master files for template placeholder indicators
+                let masterTemplateName = null;
+                for (const lowExp in masterExpectationsMap) {
+                    if (lowExp.includes("plc+hmi") || lowExp.includes(".zap")) {
+                        masterTemplateName = masterExpectationsMap[lowExp];
+                        break;
+                    }
+                }
+
+                if (masterTemplateName) {
+                    // Extract Date Pattern YYYY-MM-DD from target string
+                    const dateRegex = /(\d{4})[\s\-_](\d{2})[\s\-_](\d{2})/;
+                    const dateMatch = tFile.match(dateRegex);
+                    let extractedDate = "2026-01-01"; // Default fallback structure
+                    if (dateMatch) {
+                        extractedDate = `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`;
+                    } else {
+                        // Alt secondary fallback fallback to isolated sequence numbers 
+                        const softDateRegex = /\b(\d{8})\b/;
+                        const softMatch = tFile.match(softDateRegex);
+                        if (softMatch) {
+                            extractedDate = `${softMatch[1].substring(0,4)}-${softMatch[1].substring(4,6)}-${softMatch[1].substring(6,8)}`;
+                        }
+                    }
+
+                    // Extract Surname/Author from tail string segment
+                    const nameWithoutExt = tFile.substring(0, tFile.lastIndexOf('.')).trim();
+                    const wordsToken = nameWithoutExt.split(/[\s\-_]+/);
+                    let extractedSurname = "Cognome";
+                    if (wordsToken.length > 0) {
+                        extractedSurname = wordsToken[wordsToken.length - 1];
+                        // If last token corresponds to a date block, lookup backwards
+                        if (/^\d+$/.test(extractedSurname) && wordsToken.length > 1) {
+                            extractedSurname = wordsToken[wordsToken.length - 2];
+                        }
+                    }
+                    
+                    // Capitalize extracted string attributes
+                    extractedSurname = extractedSurname.charAt(0).toUpperCase() + extractedSurname.slice(1);
+
+                    // Build standard compiled target file structure name
+                    const compiledTargetStandard = `${activeJobCode} PLC+HMI ${extractedDate} ${extractedSurname}${fileExt}`;
+
+                    if (tFile === compiledTargetStandard) {
+                        fileEvaluation[tFile] = { isDir: false, status: 'match' };
+                    } else {
+                        fileEvaluation[tFile] = {
+                            isDir: false,
+                            status: 'rename-suggested',
+                            renameTarget: compiledTargetStandard
+                        };
+                    }
+
+                    delete masterExpectationsMap[masterTemplateName.toLowerCase()];
+                    return;
+                }
+            }
+
+            // General string similarity fallback matching rules for standard documents
             let boundTargetMatchName = null;
             const tFileLower = tFile.toLowerCase();
 
             for (const lowerExpected in masterExpectationsMap) {
                 const cleanExpected = masterExpectationsMap[lowerExpected];
-                
-                // Rule fallback logic: verify extension matches first
                 const targetExt = tFile.substring(tFile.lastIndexOf('.')).toLowerCase();
                 const expectedExt = cleanExpected.substring(cleanExpected.lastIndexOf('.')).toLowerCase();
 
                 if (targetExt === expectedExt && targetExt.length > 1) {
-                    // Stripping file prefix indicators to evaluate structural body similarities
                     const cleanT = tFileLower.replace(activeJobCode.toLowerCase(), "").replace(/[\s\-_]/g, "");
                     const cleanE = lowerExpected.replace(activeJobCode.toLowerCase(), "").replace(/[\s\-_]/g, "");
                     
@@ -1099,7 +1156,6 @@
             }
         });
 
-        // Everything remaining in map is absolute missing file requirement
         for (const lowerKey in masterExpectationsMap) {
             fileEvaluation[masterExpectationsMap[lowerKey]] = { isDir: false, status: 'missing' };
         }
@@ -1195,7 +1251,7 @@
         return `<span>${text.substring(0, index)}</span><span class="text-highlight">${text.substring(index, index + query.length)}</span><span>${text.substring(index + query.length)}</span>`;
     }
 
-    // --- GRAPHICAL TREE RENDERER ---
+    // --- VIEW INTERACTION TREE TREE GRAPHICS ---
     function renderTree(tree, container, currentRelativePath = []) {
         if (currentRelativePath.length === 0) container.innerHTML = '';
         Object.keys(tree).sort().forEach(key => {
@@ -1218,7 +1274,7 @@
             let badgeText = '';
             if (node.status === 'missing') badgeText = 'Mancante';
             if (node.status === 'extra') badgeText = 'Extra';
-            if (node.status === 'zap-error') badgeText = 'Manca Archivio .ZAP';
+            if (node.status === 'zap-error') badgeText = 'Manca Archivio .ZAP / .ZIP PLC';
             if (node.status === 'empty-error') badgeText = 'Cartella PLC Vuota';
             
             const folderIcon = document.createElement('span');
@@ -1267,7 +1323,7 @@
                         } else if (fileNode.status === 'extra') {
                             fileDiv.innerHTML += `<span class="badge badge-extra">Extra</span>`;
                         } else if (fileNode.status === 'rename-suggested') {
-                            fileDiv.innerHTML += `<span class="badge badge-rename-suggested">Nome Errato ➔ Rinominare in: ${fileNode.renameTarget}</span>`;
+                            fileDiv.innerHTML += `<span class="badge badge-rename-suggested">Nome non Standard ➔ Cambia in: ${fileNode.renameTarget}</span>`;
                         }
                         
                         childContainer.appendChild(fileDiv);
@@ -1282,7 +1338,7 @@
         });
     }
 
-    // --- MUTATIONS DELETION & STRUCTURAL FIX AUTOMATION ---
+    // --- MUTATIONS RESTRUCTURING DIRECT ACTIONS ---
     async function executeDirectDeletion(pathArray) {
         if (!activeJobDirectoryHandle) return;
         const opts = { mode: 'readwrite' };
