@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Folder Analyzer Pro</title>
+    <title>Folder Analyzer Pro - Multi Job Edition</title>
     <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.min.js"></script>
     <style>
         /* --- BASE STYLES --- */
@@ -15,7 +15,7 @@
             padding: 20px;
         }
         .container {
-            max-width: 1200px;
+            max-width: 1300px;
             margin: 0 auto;
             background: white;
             padding: 25px;
@@ -23,6 +23,7 @@
             box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
         }
         h1 { margin-top: 0; color: #0f172a; }
+        h2 { color: #1e293b; margin-top: 20px; font-size: 1.3rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;}
 
         /* --- TABS NAVIGATION --- */
         .tabs-bar {
@@ -66,6 +67,7 @@
             font-weight: 600;
             cursor: pointer;
             transition: background 0.2s;
+            border: none;
         }
         .picker-btn:hover { background-color: #1d4ed8; }
         .picker-btn.loaded { background-color: #10b981; }
@@ -75,6 +77,49 @@
             opacity: 0.6;
             pointer-events: none;
         }
+
+        /* --- MULTI-JOB DASHBOARD TABLE --- */
+        .dashboard-table-wrapper {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+        }
+        .job-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            margin-top: 10px;
+        }
+        .job-table th, .job-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.9rem;
+        }
+        .job-table th {
+            background-color: #f1f5f9;
+            color: #475569;
+            font-weight: 600;
+        }
+        .job-table tr:hover {
+            background-color: #f8fafc;
+        }
+        .job-table tr.selected-job-row {
+            background-color: #eff6ff;
+            font-weight: 600;
+        }
+        .btn-select-job {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .btn-select-job:hover { background-color: #1d4ed8; }
 
         /* --- COMPLIANCE UI BAR & COUNTERS --- */
         .compliance-container {
@@ -107,7 +152,6 @@
             transition: width 0.4s ease;
         }
         
-        /* Summary Counters Dashboard */
         .dashboard-counters {
             display: flex;
             gap: 15px;
@@ -206,7 +250,7 @@
             border: 1px solid #e2e8f0;
             border-radius: 8px;
             padding: 15px;
-            max-height: 600px;
+            max-height: 500px;
             overflow-y: auto;
         }
         .tree-node { margin: 4px 0; }
@@ -247,7 +291,6 @@
             gap: 8px;
         }
         
-        /* Inline Extension Badge Label Style */
         .ext-badge {
             font-size: 0.7rem;
             font-weight: 700;
@@ -262,13 +305,11 @@
             box-sizing: border-box;
         }
         
-        /* Specific dynamic colored extension labels */
         .ext-zap { background-color: #fef3c7; color: #d97706; border: 1px solid #f59e0b; }
         .ext-pdf { background-color: #fee2e2; color: #dc2626; border: 1px solid #f87171; }
         .ext-zip { background-color: #e0f2fe; color: #0369a1; border: 1px solid #38bdf8; }
         .ext-txt { background-color: #f1f5f9; color: #475569; border: 1px solid #94a3b8; }
         
-        /* Highlighting match text search */
         .text-highlight {
             background-color: #fef08a;
             color: #000000;
@@ -276,7 +317,6 @@
             border-radius: 2px;
         }
 
-        /* Validation States */
         .status-match { color: #0f172a; }
         .status-missing { color: #94a3b8; font-style: italic; }
         .status-extra { color: #dc2626; font-weight: 500; }
@@ -305,9 +345,7 @@
             cursor: pointer;
             font-size: 0.8rem;
         }
-        .btn-delete-extra:hover {
-            background-color: #cc0000;
-        }
+        .btn-delete-extra:hover { background-color: #cc0000; }
 
         /* --- SCAFFOLDER FORM --- */
         .form-group { margin-bottom: 15px; }
@@ -327,7 +365,7 @@
 
 <div class="container">
     <div class="tabs-bar">
-        <button class="tab-btn active" id="tab-btn-analyzer">🔍 Analyzer Commesse</button>
+        <button class="tab-btn active" id="tab-btn-analyzer">🔍 Analyzer Multi-Commessa</button>
         <button class="tab-btn" id="tab-btn-scaffolder">🏗️ Scaffolder Nuovo Progetto</button>
     </div>
 
@@ -336,14 +374,34 @@
         
         <div class="picker-container">
             <div class="picker-box">
-                <button id="master-btn" class="picker-btn" style="width: 100%; border: none; padding: 15px;">1. Seleziona Master Modello</button>
+                <button id="master-btn" class="picker-btn" style="width: 100%;">1. Seleziona Master Modello</button>
             </div>
             <div class="picker-box">
-                <button id="target-btn" class="picker-btn" style="width: 100%; border: none; padding: 15px;">2. Seleziona Cartella Commessa Reale</button>
+                <button id="target-btn" class="picker-btn" style="width: 100%;">2. Seleziona Cartella Contenitore Commesse</button>
             </div>
         </div>
 
+        <div id="multi-job-panel" class="dashboard-table-wrapper hidden">
+            <h3 style="margin-top:0; color:#334155;">📋 Elenco Commesse Rilevate</h3>
+            <table class="job-table">
+                <thead>
+                    <tr>
+                        <th>Stato</th>
+                        <th>Codice / Cartella Reale</th>
+                        <th>Grado Allineamento</th>
+                        <th>Mancanti</th>
+                        <th>Extra</th>
+                        <th>Errori Critici (PLC)</th>
+                        <th>Azione</th>
+                    </tr>
+                </thead>
+                <tbody id="job-table-body"></tbody>
+            </table>
+        </div>
+
         <div id="results-panel" class="hidden">
+            <h2>Dettaglio Commessa Attiva: <span id="active-job-title" style="color:#2563eb;"></span></h2>
+            
             <div class="compliance-container">
                 <div>
                     <div class="compliance-header">
@@ -394,10 +452,9 @@
 
     <div id="scaffolder-tab" class="tab-content">
         <h1>Generatore Struttura Commessa standard</h1>
-        
         <div class="form-group">
             <label>Seleziona Master Modello di Riferimento</label>
-            <button id="scaffolder-master-btn" class="picker-btn" style="width:100%; border:none; padding:12px; background-color:#64748b;">Seleziona Cartella Master</button>
+            <button id="scaffolder-master-btn" class="picker-btn" style="width:100%; background-color:#64748b;">Seleziona Cartella Master</button>
         </div>
         <div class="form-group">
             <label>Codice Commessa (es. C26001)</label>
@@ -407,7 +464,6 @@
             <label>Nome Cliente / Impianto</label>
             <input type="text" id="new-project-customer" placeholder="BARILLA">
         </div>
-
         <div class="form-group">
             <label style="display:flex; justify-content:space-between; align-items:center;">
                 Elenco Macchine della Linea
@@ -420,27 +476,24 @@
                 </div>
             </div>
         </div>
-
-        <button class="picker-btn" id="btn-generate-commessa-direct" style="width:100%; border:none; margin-top:20px;">⚡ Genera Pacchetto Commessa Standard (.ZIP)</button>
+        <button class="picker-btn" id="btn-generate-commessa-direct" style="width:100%; margin-top:20px;">⚡ Genera Pacchetto Commessa Standard (.ZIP)</button>
     </div>
 </div>
 
 <script>
-    // --- GLOBAL STATE STORAGE VARIABLES ---
+    // --- GLOBAL STATE ---
     let masterTree = {};
-    let targetTree = {};
+    let jobsDataset = {}; 
+    let activeJobKey = null; 
     let comparisonData = {};
-    let currentRootName = "";
-    let suggestedRootName = "";
     let scaffolderMasterTree = {};
-    let targetDirectoryHandle = null;
-    
-    // UI Filtering State Variables
+    let mainRootDirectoryHandle = null; 
+    let activeJobDirectoryHandle = null; 
+
     let currentActiveFilter = "all"; 
     let currentSearchQuery = "";
-    let rendersCounter = 0;
 
-    // --- TAB VIEW NAVIGATION TOGGLE ---
+    // --- TAB VIEW TOGGLE ---
     document.getElementById('tab-btn-analyzer').addEventListener('click', () => switchTab('analyzer-tab'));
     document.getElementById('tab-btn-scaffolder').addEventListener('click', () => switchTab('scaffolder-tab'));
 
@@ -464,10 +517,9 @@
         return match ? match[1].toUpperCase() : "C0XXX";
     }
 
-    // --- FILE SYSTEM SCANNER HIERARCHY MAP ---
+    // --- FILE SYSTEM SCANNER ---
     async function handleDirectoryScan(dirHandle) {
         const virtualRoot = { children: {}, containedFiles: [] };
-        
         async function readRecursively(handle, currentBranch) {
             for await (const entry of handle.values()) {
                 if (entry.kind === 'file') {
@@ -482,7 +534,7 @@
         return virtualRoot.children;
     }
 
-    // --- BINDING FOLDER BUTTON SELECTORS ---
+    // --- BINDING SELECTORS ---
     document.getElementById('master-btn').addEventListener('click', async () => {
         try {
             const handle = await window.showDirectoryPicker();
@@ -494,24 +546,18 @@
             targetBtn.style.pointerEvents = "auto";
             targetBtn.style.opacity = "1";
             targetBtn.style.backgroundColor = "#2563eb";
-        } catch (err) {
-            console.error("Master selection canceled or failed", err);
-        }
+        } catch (err) { console.error(err); }
     });
 
+    // 2. Selezione della CARTELLA CONTENITORE GENERALE delle commesse
     document.getElementById('target-btn').addEventListener('click', async () => {
         try {
-            targetDirectoryHandle = await window.showDirectoryPicker();
-            targetTree = await handleDirectoryScan(targetDirectoryHandle);
-            currentRootName = targetDirectoryHandle.name;
-            
-            document.getElementById('target-btn').textContent = `📁 Target Loaded: ${currentRootName}`;
+            mainRootDirectoryHandle = await window.showDirectoryPicker();
+            document.getElementById('target-btn').textContent = `📁 Root Loaded: ${mainRootDirectoryHandle.name}`;
             document.getElementById('target-btn').classList.add('loaded');
             
-            executeCoreAnalysis();
-        } catch (err) {
-            console.error("Target selection canceled or failed", err);
-        }
+            await processMultiJobDirectory();
+        } catch (err) { console.error(err); }
     });
 
     document.getElementById('scaffolder-master-btn').addEventListener('click', async () => {
@@ -520,69 +566,147 @@
             scaffolderMasterTree = await handleDirectoryScan(handle);
             document.getElementById('scaffolder-master-btn').textContent = `📁 Master Loaded: ${handle.name}`;
             document.getElementById('scaffolder-master-btn').style.backgroundColor = "#10b981";
-        } catch (err) {
-            console.error(err);
-        }
+        } catch (err) { console.error(err); }
     });
 
-    // --- DEEP RECURSIVE SEARCH ---
-    function scanTreeBranchForExtension(node, targetPattern) {
-        if (!node) return false;
-        
-        if (node.containedFiles) {
-            const files = Array.isArray(node.containedFiles) ? node.containedFiles : Object.keys(node.containedFiles);
-            if (files.some(f => f.toLowerCase().includes(targetPattern.toLowerCase()))) {
-                return true;
-            }
-        }
-        
-        if (node.children) {
-            for (const key in node.children) {
-                if (key !== 'containedFiles' && scanTreeBranchForExtension(node.children[key], targetPattern)) {
-                    return true;
+    // --- SCANNER MULTI COMMESSA ---
+    async function processMultiJobDirectory() {
+        jobsDataset = {};
+        const tbody = document.getElementById('job-table-body');
+        tbody.innerHTML = '<tr><td colspan="7">Scansione e analisi delle commesse in corso...</td></tr>';
+        document.getElementById('multi-job-panel').classList.remove('hidden');
+        document.getElementById('results-panel').classList.add('hidden');
+
+        // Scansiona il primo livello del contenitore (ogni cartella è una potenziale commessa)
+        for await (const entry of mainRootDirectoryHandle.values()) {
+            if (entry.kind === 'directory') {
+                const jobCode = extractJobCode(entry.name);
+                if (jobCode !== "C0XXX") { // Identifica se ha una struttura codice tipo C26001
+                    const jobHandle = await mainRootDirectoryHandle.getDirectoryHandle(entry.name);
+                    const parsedSubtree = await handleDirectoryScan(jobHandle);
+                    
+                    // Esegue pre-analisi silente per calcolare le metriche di questa commessa
+                    const mockCurrentRootName = entry.name;
+                    const calculatedComparison = compareTreesWithContext(masterTree, parsedSubtree, mockCurrentRootName);
+                    const metrics = calculateMetricsForTree(calculatedComparison);
+
+                    jobsDataset[entry.name] = {
+                        handle: jobHandle,
+                        tree: parsedSubtree,
+                        comparison: calculatedComparison,
+                        metrics: metrics
+                    };
                 }
             }
         }
-        return false;
+        renderMultiJobDashboard();
     }
 
-    // --- COUNTER CHECKER FOR EMPTY DIRECTORIES AT ANY DEPTH ---
-    function isTreeBranchCompletelyEmpty(node) {
-        if (!node) return true;
-        const files = node.containedFiles ? (Array.isArray(node.containedFiles) ? node.containedFiles : Object.keys(node.containedFiles)) : [];
-        if (files.length > 0) return false;
+    function renderMultiJobDashboard() {
+        const tbody = document.getElementById('job-table-body');
+        tbody.innerHTML = '';
 
-        if (node.children) {
-            const childKeys = Object.keys(node.children).filter(k => k !== 'containedFiles');
-            if (childKeys.length > 0) {
-                for (const key of childKeys) {
-                    if (!isTreeBranchCompletelyEmpty(node.children[key])) {
-                        return false;
+        const keys = Object.keys(jobsDataset).sort();
+        if (keys.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7">Nessuna cartella di commessa valida identificata (es. prefisso C26001).</td></tr>';
+            return;
+        }
+
+        keys.forEach(key => {
+            const job = jobsDataset[key];
+            const tr = document.createElement('tr');
+            if (activeJobKey === key) tr.className = 'selected-job-row';
+
+            const statusIcon = job.metrics.critical > 0 ? '📦❌' : (job.metrics.missing > 0 ? '❔⚠️' : '✅');
+
+            tr.innerHTML = `
+                <td style="text-align:center;">${statusIcon}</td>
+                <td><strong>${key}</strong></td>
+                <td>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <div class="progress-track" style="width:60px; margin:0; height:8px;">
+                            <div class="progress-bar" style="width:${job.metrics.score}%;"></div>
+                        </div>
+                        <span>${job.metrics.score}%</span>
+                    </div>
+                </td>
+                <td style="color:#64748b;">${job.metrics.missing}</td>
+                <td style="color:#dc2626;">${job.metrics.extra}</td>
+                <td style="color:#d97706; font-weight:bold;">${job.metrics.critical}</td>
+                <td><button class="btn-select-job" data-job="${key}">Apri Dettaglio</button></td>
+            `;
+
+            tr.querySelector('.btn-select-job').addEventListener('click', (e) => {
+                loadJobDetail(e.target.getAttribute('data-job'));
+            });
+
+            tbody.appendChild(tr);
+        });
+    }
+
+    async function loadJobDetail(jobKey) {
+        activeJobKey = jobKey;
+        const job = jobsDataset[jobKey];
+        activeJobDirectoryHandle = job.handle;
+        
+        document.getElementById('active-job-title').textContent = jobKey;
+        
+        // Renderizza l'albero visivo per questa commessa
+        renderTreeDashboard(jobKey);
+        renderMultiJobDashboard(); // Aggiorna riga selezionata nella tabella
+    }
+
+    function renderTreeDashboard(jobKey) {
+        const job = jobsDataset[jobKey];
+        comparisonData = job.comparison;
+        
+        const suggestedRootName = formatFolderName(jobKey);
+        const fixContainer = document.getElementById('fix-container');
+        if (jobKey !== suggestedRootName) {
+            document.getElementById('current-folder-name').textContent = jobKey;
+            document.getElementById('suggested-folder-name').textContent = suggestedRootName;
+            fixContainer.classList.remove('hidden');
+        } else {
+            fixContainer.classList.add('hidden');
+        }
+
+        document.getElementById('results-panel').classList.remove('hidden');
+        applyFiltersAndRender();
+    }
+
+    // --- UTILITIES ANALISI SPECIFICHE ---
+    function calculateMetricsForTree(tree) {
+        let match = 0, missing = 0, extra = 0, critical = 0;
+        function scan(node) {
+            for (const key in node) {
+                if (key === 'containedFiles') continue;
+                const item = node[key];
+                if (['zap-error', 'empty-error'].includes(item.status)) critical++;
+                else if (item.status === 'missing') missing++;
+                else if (item.status === 'extra') extra++;
+                else if (item.status === 'match') match++;
+
+                if (item.containedFiles) {
+                    for (const f in item.containedFiles) {
+                        const s = item.containedFiles[f].status;
+                        if (s === 'missing') missing++;
+                        if (s === 'extra') extra++;
+                        if (s === 'match') match++;
                     }
                 }
+                if (item.children) scan(item.children);
             }
         }
-        return true;
+        scan(tree);
+        const total = match + missing + critical;
+        const score = total > 0 ? Math.round((match / total) * 100) : 100;
+        return { match, missing, extra, critical, score };
     }
 
-    // --- RECURSIVE PLC SCANNER UTILITY ---
-    function locatePlcFolderDeep(node) {
-        if (!node || !node.children) return null;
-        
-        for (const key in node.children) {
-            if (key.toLowerCase().includes("plc") || key.toLowerCase().includes("10.")) {
-                return node.children[key];
-            }
-            const deepMatch = locatePlcFolderDeep(node.children[key]);
-            if (deepMatch) return deepMatch;
-        }
-        return null;
-    }
-
-    // --- TREE COMPARATOR ENGINE FUNCTION ---
-    function compareTrees(master, target) {
+    // Versione modificata del comparatore per passare esplicitamente il nome radice del job analizzato
+    function compareTreesWithContext(master, target, rootNameContext) {
         const mergedResult = {};
-        const activeJobCode = extractJobCode(currentRootName);
+        const activeJobCode = extractJobCode(rootNameContext);
 
         let masterMachineKey = null;
         for (const key in master) {
@@ -598,52 +722,38 @@
             for (const targetKey in target) {
                 if (machinePattern.test(targetKey)) {
                     matchedTargetMachineKeys.add(targetKey);
-                    
                     const targetSubtree = target[targetKey].children || {};
                     let plcFolderRef = locatePlcFolderDeep(target[targetKey]);
-
                     let branchStatus = 'match';
 
                     if (plcFolderRef) {
-                        if (isTreeBranchCompletelyEmpty(plcFolderRef)) {
-                            branchStatus = 'empty-error';
-                        } else {
+                        if (isTreeBranchCompletelyEmpty(plcFolderRef)) branchStatus = 'empty-error';
+                        else {
                             let zapArchivedDetected = scanTreeBranchForExtension(plcFolderRef, ".zap");
-
                             if (!zapArchivedDetected) {
                                 for (const subKey in targetSubtree) {
                                     if (subKey.toLowerCase().includes("display") || subKey.toLowerCase().includes("hmi") || subKey.toLowerCase().includes("40.")) {
-                                        if (scanTreeBranchForExtension(targetSubtree[subKey], ".zap")) {
-                                            zapArchivedDetected = true;
-                                            break;
-                                        }
+                                        if (scanTreeBranchForExtension(targetSubtree[subKey], ".zap")) { zapArchivedDetected = true; break; }
                                     }
                                 }
-                                if (!zapArchivedDetected) {
-                                    branchStatus = 'zap-error';
-                                }
+                                if (!zapArchivedDetected) branchStatus = 'zap-error';
                             }
                         }
                     } else {
                         let backupZapCheck = false;
                         for (const subKey in targetSubtree) {
                             if (subKey.toLowerCase().includes("display") || subKey.toLowerCase().includes("hmi") || subKey.toLowerCase().includes("40.")) {
-                                if (scanTreeBranchForExtension(targetSubtree[subKey], ".zap")) {
-                                    backupZapCheck = true;
-                                    break;
-                                }
+                                if (scanTreeBranchForExtension(targetSubtree[subKey], ".zap")) { backupZapCheck = true; break; }
                             }
                         }
-                        if (!backupZapCheck) {
-                            branchStatus = 'zap-error';
-                        }
+                        if (!backupZapCheck) branchStatus = 'zap-error';
                     }
 
                     mergedResult[targetKey] = {
                         isDir: true,
                         status: branchStatus,
                         containedFiles: compareFilesList(master[masterMachineKey].containedFiles || [], target[targetKey].containedFiles || []),
-                        children: compareTrees(master[masterMachineKey].children || {}, targetSubtree)
+                        children: compareTreesWithContext(master[masterMachineKey].children || {}, targetSubtree, rootNameContext)
                     };
                 }
             }
@@ -658,7 +768,7 @@
                         isDir: true,
                         status: 'missing',
                         containedFiles: compareFilesList(master[masterMachineKey].containedFiles || [], []),
-                        children: compareTrees(master[masterMachineKey].children || {}, {})
+                        children: compareTreesWithContext(master[masterMachineKey].children || {}, {}, rootNameContext)
                     };
                 }
                 continue;
@@ -669,14 +779,14 @@
                     isDir: true,
                     status: 'match',
                     containedFiles: compareFilesList(master[masterKey].containedFiles || [], target[processedMasterKey].containedFiles || []),
-                    children: compareTrees(master[masterKey].children || {}, target[processedMasterKey].children || {})
+                    children: compareTreesWithContext(master[masterKey].children || {}, target[processedMasterKey].children || {}, rootNameContext)
                 };
             } else {
                 mergedResult[processedMasterKey] = {
                     isDir: true,
                     status: 'missing',
                     containedFiles: compareFilesList(master[masterKey].containedFiles || [], []),
-                    children: compareTrees(master[masterKey].children || {}, {})
+                    children: compareTreesWithContext(master[masterKey].children || {}, {}, rootNameContext)
                 };
             }
         }
@@ -689,100 +799,81 @@
                     isDir: true,
                     status: 'extra',
                     containedFiles: compareFilesList([], target[targetKey].containedFiles || []),
-                    children: compareTrees({}, target[targetKey].children || {})
+                    children: compareTreesWithContext({}, target[targetKey].children || {}, rootNameContext)
                 };
             }
         }
-
         return mergedResult;
     }
 
-    // --- FILE COMPARATOR COMPONENT ---
+    function scanTreeBranchForExtension(node, targetPattern) {
+        if (!node) return false;
+        if (node.containedFiles) {
+            const files = Array.isArray(node.containedFiles) ? node.containedFiles : Object.keys(node.containedFiles);
+            if (files.some(f => f.toLowerCase().includes(targetPattern.toLowerCase()))) return true;
+        }
+        if (node.children) {
+            for (const key in node.children) {
+                if (key !== 'containedFiles' && scanTreeBranchForExtension(node.children[key], targetPattern)) return true;
+            }
+        }
+        return false;
+    }
+
+    function isTreeBranchCompletelyEmpty(node) {
+        if (!node) return true;
+        const files = node.containedFiles ? (Array.isArray(node.containedFiles) ? node.containedFiles : Object.keys(node.containedFiles)) : [];
+        if (files.length > 0) return false;
+        if (node.children) {
+            const childKeys = Object.keys(node.children).filter(k => k !== 'containedFiles');
+            for (const key of childKeys) {
+                if (!isTreeBranchCompletelyEmpty(node.children[key])) return false;
+            }
+        }
+        return true;
+    }
+
+    function locatePlcFolderDeep(node) {
+        if (!node || !node.children) return null;
+        for (const key in node.children) {
+            if (key.toLowerCase().includes("plc") || key.toLowerCase().includes("10.")) return node.children[key];
+            const deepMatch = locatePlcFolderDeep(node.children[key]);
+            if (deepMatch) return deepMatch;
+        }
+        return null;
+    }
+
     function compareFilesList(masterFiles, targetFiles) {
         const fileEvaluation = {};
         const filteredMaster = masterFiles.filter(f => f.toLowerCase() !== "pippo.txt");
         const filteredTarget = targetFiles.filter(f => f.toLowerCase() !== "pippo.txt");
-
         filteredMaster.forEach(f => {
-            if (filteredTarget.includes(f)) {
-                fileEvaluation[f] = { isDir: false, status: 'match' };
-            } else {
-                fileEvaluation[f] = { isDir: false, status: 'missing' };
-            }
+            fileEvaluation[f] = { isDir: false, status: filteredTarget.includes(f) ? 'match' : 'missing' };
         });
         filteredTarget.forEach(f => {
-            if (!filteredMaster.includes(f)) {
-                fileEvaluation[f] = { isDir: false, status: 'extra' };
-            }
+            if (!filteredMaster.includes(f)) fileEvaluation[f] = { isDir: false, status: 'extra' };
         });
         return fileEvaluation;
     }
 
-    // --- MAIN EXECUTION PIPELINE ---
-    function executeCoreAnalysis() {
-        suggestedRootName = formatFolderName(currentRootName);
-        
-        const fixContainer = document.getElementById('fix-container');
-        if (currentRootName !== suggestedRootName) {
-            document.getElementById('current-folder-name').textContent = currentRootName;
-            document.getElementById('suggested-folder-name').textContent = suggestedRootName;
-            fixContainer.classList.remove('hidden');
-        } else {
-            fixContainer.classList.add('hidden');
-        }
-
-        comparisonData = compareTrees(masterTree, targetTree);
-        
-        document.getElementById('results-panel').classList.remove('hidden');
-        applyFiltersAndRender();
-    }
-
-    // --- METRICS CALCULATOR DASHBOARD ---
-    function updateDashboardMetrics() {
-        let match = 0, missing = 0, extra = 0, critical = 0;
-
-        function scanMetrics(tree) {
-            for (const key in tree) {
-                if (key === 'containedFiles') continue;
-                const node = tree[key];
-                
-                if (['zap-error', 'empty-error'].includes(node.status)) critical++;
-                else if (node.status === 'missing') missing++;
-                else if (node.status === 'extra') extra++;
-                else if (node.status === 'match') match++;
-
-                if (node.containedFiles) {
-                    for (const f in node.containedFiles) {
-                        const fStatus = node.containedFiles[f].status;
-                        if (fStatus === 'missing') missing++;
-                        if (fStatus === 'extra') extra++;
-                        if (fStatus === 'match') match++;
-                    }
-                }
-                if (node.children) scanMetrics(node.children);
-            }
-        }
-
-        scanMetrics(comparisonData);
-
-        document.getElementById('cnt-match').textContent = match;
-        document.getElementById('cnt-missing').textContent = missing;
-        document.getElementById('cnt-extra').textContent = extra;
-        document.getElementById('cnt-critical').textContent = critical;
-
-        const totalExpected = match + missing + critical;
-        const score = totalExpected > 0 ? Math.round((match / totalExpected) * 100) : 100;
-        
-        document.getElementById('compliance-score').textContent = `${score}%`;
-        document.getElementById('compliance-bar').style.width = `${score}%`;
-    }
-
-    // --- FILTER INTERFACE LOGIC MAPS ---
+    // --- RE-RENDER INTERFACCIA ---
     function applyFiltersAndRender() {
-        rendersCounter = 0;
         const rootContainer = document.getElementById('tree-root');
         renderTree(comparisonData, rootContainer);
-        updateDashboardMetrics();
+        
+        // Aggiorna contatori globali sul dettaglio commessa attiva
+        const metrics = calculateMetricsForTree(comparisonData);
+        document.getElementById('cnt-match').textContent = metrics.match;
+        document.getElementById('cnt-missing').textContent = metrics.missing;
+        document.getElementById('cnt-extra').textContent = metrics.extra;
+        document.getElementById('cnt-critical').textContent = metrics.critical;
+        document.getElementById('compliance-score').textContent = `${metrics.score}%`;
+        document.getElementById('compliance-bar').style.width = `${metrics.score}%`;
+
+        // Sincronizza i dati aggiornati nel dataset complessivo della dashboard superiore
+        if (activeJobKey && jobsDataset[activeJobKey]) {
+            jobsDataset[activeJobKey].metrics = metrics;
+        }
     }
 
     document.getElementById('tree-search-input').addEventListener('input', (e) => {
@@ -801,7 +892,6 @@
         applyFiltersAndRender();
     }
 
-    // --- EXPAND / COLLAPSE UI TRIGGERS ---
     document.getElementById('btn-expand-all').addEventListener('click', () => {
         document.querySelectorAll('.children-container').forEach(c => c.classList.remove('collapsed'));
         document.querySelectorAll('.tree-node-content').forEach(n => n.classList.remove('collapsed'));
@@ -812,15 +902,11 @@
         document.querySelectorAll('.tree-node-content').forEach(n => n.classList.add('collapsed'));
     });
 
-    // --- HELPER FILTER CHECK ENGINES ---
     function checkNodeMatchesSearch(key, node, query) {
         if (!query) return true;
         if (key.toLowerCase().includes(query)) return true;
-        
         if (node.containedFiles) {
-            for (const f in node.containedFiles) {
-                if (f.toLowerCase().includes(query)) return true;
-            }
+            for (const f in node.containedFiles) { if (f.toLowerCase().includes(query)) return true; }
         }
         if (node.children) {
             for (const childKey in node.children) {
@@ -833,14 +919,10 @@
 
     function checkTreeBranchHasStatus(node, filterType) {
         if (filterType === 'all') return true;
-        
         if (filterType === 'errors') {
             if (['missing', 'zap-error', 'empty-error'].includes(node.status)) return true;
         }
-        if (filterType === 'extra' && node.status === 'extra') {
-            return true;
-        }
-
+        if (filterType === 'extra' && node.status === 'extra') return true;
         if (node.containedFiles) {
             for (const f in node.containedFiles) {
                 const fStatus = node.containedFiles[f].status;
@@ -848,7 +930,6 @@
                 if (filterType === 'extra' && fStatus === 'extra') return true;
             }
         }
-
         if (node.children) {
             for (const childKey in node.children) {
                 if (childKey === 'containedFiles') continue;
@@ -862,33 +943,21 @@
         if (!query) return `<span>${text}</span>`;
         const index = text.toLowerCase().indexOf(query);
         if (index === -1) return `<span>${text}</span>`;
-        
-        const prefix = text.substring(0, index);
-        const match = text.substring(index, index + query.length);
-        const suffix = text.substring(index + query.length);
-        return `<span>${prefix}</span><span class="text-highlight">${match}</span><span>${suffix}</span>`;
+        return `<span>${text.substring(0, index)}</span><span class="text-highlight">${text.substring(index, index + query.length)}</span><span>${text.substring(index + query.length)}</span>`;
     }
 
     // --- GRAPHICAL TREE RENDERER ---
     function renderTree(tree, container, currentRelativePath = []) {
         if (currentRelativePath.length === 0) container.innerHTML = '';
-    
         Object.keys(tree).sort().forEach(key => {
             if (key === 'containedFiles') return; 
-        
             const node = tree[key];
             const nodePath = [...currentRelativePath, key];
             
-            const searchMatch = checkNodeMatchesSearch(key, node, currentSearchQuery);
-            const filterMatch = checkTreeBranchHasStatus(node, currentActiveFilter);
-            
-            if (!searchMatch || !filterMatch) return; 
-            rendersCounter++;
+            if (!checkNodeMatchesSearch(key, node, currentSearchQuery) || !checkTreeBranchHasStatus(node, currentActiveFilter)) return; 
 
             const realChildrenKeys = node.children ? Object.keys(node.children).filter(k => k !== 'containedFiles') : [];
-            const hasChildren = realChildrenKeys.length > 0;
-            const hasFiles = node.containedFiles && Object.keys(node.containedFiles).length > 0;
-            const isExpandable = hasChildren || hasFiles;
+            const isExpandable = realChildrenKeys.length > 0 || (node.containedFiles && Object.keys(node.containedFiles).length > 0);
             
             const nodeDiv = document.createElement('div');
             nodeDiv.className = 'tree-node';
@@ -903,225 +972,153 @@
             if (node.status === 'zap-error') badgeText = 'Manca Archivio .ZAP';
             if (node.status === 'empty-error') badgeText = 'Cartella PLC Vuota';
             
+            const folderIcon = document.createElement('span');
+            folderIcon.textContent = '📁 ';
             const labelSpan = document.createElement('span');
             labelSpan.innerHTML = highlightTextMatch(key, currentSearchQuery);
-            
-            const folderIcon = document.createElement('span');
-            folderIcon.style.fontSize = '1.1rem';
-            folderIcon.style.lineHeight = '1';
-            folderIcon.textContent = '📁 ';
             
             nodeContent.appendChild(folderIcon);
             nodeContent.appendChild(labelSpan);
             
             if (badgeText) {
-                const badgeSpan = document.createElement('span');
-                badgeSpan.className = `badge badge-${node.status}`;
-                badgeSpan.textContent = badgeText;
-                nodeContent.appendChild(badgeSpan);
+                const b = document.createElement('span'); b.className = `badge badge-${node.status}`; b.textContent = badgeText;
+                nodeContent.appendChild(b);
             }
             
             if (node.status === 'extra') {
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'btn-delete-extra';
-                deleteBtn.textContent = '🗑️ Elimina';
-                deleteBtn.addEventListener('click', (event) => {
-                    event.stopPropagation();
-                    executeDirectDeletion(nodePath, true);
-                });
-                nodeContent.appendChild(deleteBtn);
+                const d = document.createElement('button'); d.className = 'btn-delete-extra'; d.textContent = '🗑️ Elimina';
+                d.addEventListener('click', (e) => { e.stopPropagation(); executeDirectDeletion(nodePath); });
+                nodeContent.appendChild(d);
             }
             
             nodeDiv.appendChild(nodeContent);
             
             if (isExpandable) {
                 const childContainer = document.createElement('div');
-                
-                if (currentSearchQuery !== "" || currentActiveFilter !== "all") {
-                    childContainer.className = 'children-container';
-                } else {
-                    childContainer.className = 'children-container collapsed';
-                    nodeContent.classList.add('collapsed');
-                }
-                
-                if (node.children) {
-                    renderTree(node.children, childContainer, nodePath);
-                }
+                childContainer.className = (currentSearchQuery !== "" || currentActiveFilter !== "all") ? 'children-container' : 'children-container collapsed';
+                if (currentSearchQuery === "" && currentActiveFilter === "all") nodeContent.classList.add('collapsed');
+
+                if (node.children) renderTree(node.children, childContainer, nodePath);
                 
                 if (node.containedFiles) {
                     Object.keys(node.containedFiles).sort().forEach(fName => {
                         const fileNode = node.containedFiles[fName];
-                        const fileMatch = currentSearchQuery === "" || fName.toLowerCase().includes(currentSearchQuery);
-                        
-                        let fileFilterMatch = true;
-                        if (currentActiveFilter === 'errors' && fileNode.status !== 'missing') fileFilterMatch = false;
-                        if (currentActiveFilter === 'extra' && fileNode.status !== 'extra') fileFilterMatch = false;
-                        
-                        if (!fileMatch || !fileFilterMatch) return;
+                        if (currentSearchQuery !== "" && !fName.toLowerCase().includes(currentSearchQuery)) return;
+                        if (currentActiveFilter === 'errors' && fileNode.status !== 'missing') return;
+                        if (currentActiveFilter === 'extra' && fileNode.status !== 'extra') return;
 
                         const fileDiv = document.createElement('div');
                         fileDiv.className = `file-node status-${fileNode.status}`;
-                        
                         const ext = fName.includes('.') ? fName.split('.').pop().toLowerCase() : 'txt';
-                        const extBadge = document.createElement('span');
-                        extBadge.className = `ext-badge ext-${ext}`;
-                        extBadge.textContent = ext;
                         
-                        const fileLabel = document.createElement('span');
-                        fileLabel.innerHTML = highlightTextMatch(fName, currentSearchQuery);
-                        
-                        fileDiv.appendChild(extBadge);
-                        fileDiv.appendChild(fileLabel);
-                        
+                        fileDiv.innerHTML = `<span class="ext-badge ext-${ext}">${ext}</span><span>${highlightTextMatch(fName, currentSearchQuery)}</span>`;
                         if (fileNode.status === 'missing' || fileNode.status === 'extra') {
-                            const fBadge = document.createElement('span');
-                            fBadge.className = `badge badge-${fileNode.status}`;
-                            fBadge.textContent = fileNode.status === 'missing' ? 'Mancante' : 'Extra';
-                            fileDiv.appendChild(fBadge);
+                            fileDiv.innerHTML += `<span class="badge badge-${fileNode.status}">${fileNode.status === 'missing' ? 'Mancante' : 'Extra'}</span>`;
                         }
-                        
                         childContainer.appendChild(fileDiv);
                     });
                 }
-                
                 nodeDiv.appendChild(childContainer);
-                
                 nodeContent.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    childContainer.classList.toggle('collapsed');
-                    nodeContent.classList.toggle('collapsed');
+                    e.stopPropagation(); childContainer.classList.toggle('collapsed'); nodeContent.classList.toggle('collapsed');
                 });
             }
-            
             container.appendChild(nodeDiv);
         });
     }
 
-    // --- FILE/FOLDER MUTATION DELETION AUTOMATION ---
-    async function executeDirectDeletion(pathArray, isDirectory = true) {
-        if (!targetDirectoryHandle) return;
-        
-        // Explicitly check/verify write authorization
+    // --- MUTATIONS DELETION & STRUCTURAL FIX AUTOMATION ---
+    async function executeDirectDeletion(pathArray) {
+        if (!activeJobDirectoryHandle) return;
         const opts = { mode: 'readwrite' };
-        if (await targetDirectoryHandle.queryPermission(opts) !== 'granted') {
-            if (await targetDirectoryHandle.requestPermission(opts) !== 'granted') {
-                alert("Impossibile procedere senza permessi di scrittura sulla cartella.");
-                return;
-            }
+        if (await activeJobDirectoryHandle.queryPermission(opts) !== 'granted') {
+            if (await activeJobDirectoryHandle.requestPermission(opts) !== 'granted') return;
         }
 
-        if (!confirm(`Sicuro di voler eliminare definitivamente: ${pathArray.join('/')}?`)) return;
+        if (!confirm(`Eliminare definitivamente: ${pathArray.join('/')}?`)) return;
 
         try {
-            let currentHandle = targetDirectoryHandle;
+            let currentHandle = activeJobDirectoryHandle;
             for (let i = 0; i < pathArray.length - 1; i++) {
                 currentHandle = await currentHandle.getDirectoryHandle(pathArray[i]);
             }
-            const targetName = pathArray[pathArray.length - 1];
-            await currentHandle.removeEntry(targetName, { recursive: true });
-            alert("Eliminato con successo!");
+            await currentHandle.removeEntry(pathArray[pathArray.length - 1], { recursive: true });
+            alert("Eliminato!");
             
-            targetTree = await handleDirectoryScan(targetDirectoryHandle);
-            executeCoreAnalysis();
-        } catch (err) {
-            console.error("Deletion failed", err);
-            alert("Errore durante l'eliminazione dei file.");
-        }
+            // Ricarica la commessa attiva e aggiorna dashboard
+            jobsDataset[activeJobKey].tree = await handleDirectoryScan(activeJobDirectoryHandle);
+            jobsDataset[activeJobKey].comparison = compareTreesWithContext(masterTree, jobsDataset[activeJobKey].tree, activeJobKey);
+            renderTreeDashboard(activeJobKey);
+            renderMultiJobDashboard();
+        } catch (err) { alert("Errore di cancellazione."); }
     }
 
-    // --- DIRECT STRUCTURAL ALIGNMENT OPERATION ---
     document.getElementById('btn-direct-fix').addEventListener('click', async () => {
-        if (!targetDirectoryHandle) return;
-        
-        // FORCE INTERACTIVE WRITE PERMISSION REQUEST FOR OPERATING SYSTEM FILESYSTEM MUTATION
+        if (!activeJobDirectoryHandle) return;
         const writeOptions = { mode: 'readwrite' };
-        if (await targetDirectoryHandle.queryPermission(writeOptions) !== 'granted') {
-            if (await targetDirectoryHandle.requestPermission(writeOptions) !== 'granted') {
-                alert("Operazione annullata: sono necessari i permessi di scrittura sulla cartella reale per poter allineare le strutture!");
-                return;
-            }
+        if (await activeJobDirectoryHandle.queryPermission(writeOptions) !== 'granted') {
+            if (await activeJobDirectoryHandle.requestPermission(writeOptions) !== 'granted') return;
         }
 
         try {
-            if (currentRootName !== suggestedRootName) {
-                alert("Per rinominare la cartella principale, fallo manualmente sul sistema operativo in: " + suggestedRootName);
-            }
-
-            const activeJobCode = extractJobCode(currentRootName);
-            
+            const activeJobCode = extractJobCode(activeJobKey);
             let masterMachineKey = null;
             for (const key in masterTree) {
-                if (key.toLowerCase().includes("master directory macchina")) {
-                    masterMachineKey = key;
-                    break;
-                }
+                if (key.toLowerCase().includes("master directory macchina")) { masterMachineKey = key; break; }
             }
 
-            // Core recursive creation machine
             async function createMissingStructures(masterNode, targetHandle) {
                 for (const key in masterNode) {
                     if (key === 'containedFiles') continue;
-                    
                     const correctedKey = key.replace(/C0xxx/gi, activeJobCode);
                     
                     if (key === masterMachineKey) {
                         const machinePattern = new RegExp(`^${activeJobCode}\\s*-\\s*\\d+\\s*.*|^${activeJobCode}-\\d+\\s*.*`, 'i');
-                        
                         for await (const entry of targetHandle.values()) {
                             if (entry.kind === 'directory' && machinePattern.test(entry.name)) {
                                 const realMachineHandle = await targetHandle.getDirectoryHandle(entry.name);
-                                if (masterNode[key].children) {
-                                    await createMissingStructures(masterNode[key].children, realMachineHandle);
-                                }
+                                if (masterNode[key].children) await createMissingStructures(masterNode[key].children, realMachineHandle);
                             }
                         }
                         continue;
                     }
 
-                    // Force physical folder creation inside sub-directory tree structures
                     let subHandle = await targetHandle.getDirectoryHandle(correctedKey, { create: true });
-                    
-                    if (masterNode[key].children) {
-                        await createMissingStructures(masterNode[key].children, subHandle);
-                    }
+                    if (masterNode[key].children) await createMissingStructures(masterNode[key].children, subHandle);
                 }
             }
 
-            await createMissingStructures(masterTree, targetDirectoryHandle);
-            alert("Allineamento Struttura Completato con Successo!");
+            await createMissingStructures(masterTree, activeJobDirectoryHandle);
+            alert("Allineamento Struttura Completato!");
             
-            // Reload and evaluate alignment state
-            targetTree = await handleDirectoryScan(targetDirectoryHandle);
-            executeCoreAnalysis();
-        } catch (err) {
-            console.error("Structural sync failed:", err);
-            alert("Errore durante la creazione fisica delle cartelle. Verifica i permessi del file system.");
-        }
+            // Ricarica stato
+            jobsDataset[activeJobKey].tree = await handleDirectoryScan(activeJobDirectoryHandle);
+            jobsDataset[activeJobKey].comparison = compareTreesWithContext(masterTree, jobsDataset[activeJobKey].tree, activeJobKey);
+            renderTreeDashboard(activeJobKey);
+            renderMultiJobDashboard();
+        } catch (err) { alert("Errore durante l'allineamento."); }
     });
 
-    // --- REPORT EXPORT LOGIC ---
     document.getElementById('btn-export-json').addEventListener('click', () => {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(comparisonData, null, 2));
         const dlAnchorElem = document.createElement('a');
         dlAnchorElem.setAttribute("href", dataStr);
-        dlAnchorElem.setAttribute("download", `Report_Compliance_${currentRootName || 'Commessa'}.json`);
+        dlAnchorElem.setAttribute("download", `Report_Multi_Compliance_${activeJobKey}.json`);
         dlAnchorElem.click();
     });
 
-    // --- SCAFFOLDER LINE BUILDER ENGINE ---
+    // --- SCAFFOLDER ENGINE ---
     document.getElementById('btn-add-machine').addEventListener('click', () => {
         const container = document.getElementById('machines-container');
         const count = container.children.length + 1;
         const paddedCount = String(count).padStart(2, '0');
-        
         const div = document.createElement('div');
         div.className = 'machine-item';
         div.innerHTML = `
-            <input type="text" class="machine-id-input" placeholder="N°: ${paddedCount}" value="${paddedCount}">
-            <input type="text" class="machine-desc-input" placeholder="Tipo Macchina: Es. Nastro" value="">
+            <input type="text" class="machine-id-input" value="${paddedCount}">
+            <input type="text" class="machine-desc-input" placeholder="Tipo Macchina" value="">
             <button type="button" class="btn-remove-machine">X</button>
         `;
-        
         div.querySelector('.btn-remove-machine').addEventListener('click', () => div.remove());
         container.appendChild(div);
     });
@@ -1129,53 +1126,34 @@
     document.getElementById('btn-generate-commessa-direct').addEventListener('click', async () => {
         const code = document.getElementById('new-project-code').value.toUpperCase().trim();
         const customer = document.getElementById('new-project-customer').value.toUpperCase().trim();
-        
-        if (!code || !customer) {
-            alert("Inserisci codice commessa e nome cliente!");
-            return;
-        }
-
-        if (Object.keys(scaffolderMasterTree).length === 0) {
-            alert("Seleziona prima la cartella Master Modello nello Scaffolder!");
-            return;
+        if (!code || !customer || Object.keys(scaffolderMasterTree).length === 0) {
+            alert("Compila tutti i campi dello scaffolder!"); return;
         }
 
         try {
             const zip = new fflate.Zip();
             const rootFolderName = `${code} - ${customer}`;
-
             let masterMachineKey = null;
             for (const key in scaffolderMasterTree) {
-                if (key.toLowerCase().includes("master directory macchina")) {
-                    masterMachineKey = key;
-                    break;
-                }
+                if (key.toLowerCase().includes("master directory macchina")) { masterMachineKey = key; break; }
             }
 
             async function addBranchToZip(masterNode, currentPathString) {
                 for (const key in masterNode) {
                     if (key === 'containedFiles') continue;
-                    
                     if (key === masterMachineKey) {
                         const machineItems = document.querySelectorAll('.machine-item');
                         for (const item of machineItems) {
                             const mId = item.querySelector('.machine-id-input').value.trim();
                             const mDesc = item.querySelector('.machine-desc-input').value.toUpperCase().trim();
-                            const machineFolderName = `${code}-${mId} - ${mDesc}`;
-                            
-                            const subPath = `${currentPathString}/${machineFolderName}`;
-                            zip[subPath + '/'] = new Uint8Array([0]); 
-                            
+                            const subPath = `${currentPathString}/${code}-${mId} - ${mDesc}`;
+                            zip[subPath + '/'] = new Uint8Array([0]);
                             await addBranchToZip(masterNode[key].children, subPath);
                         }
                     } else {
-                        const cleanKey = key.replace(/C0xxx/gi, code);
-                        const subPath = `${currentPathString}/${cleanKey}`;
-                        zip[subPath + '/'] = new Uint8Array([0]); 
-                        
-                        if (masterNode[key].children) {
-                            await addBranchToZip(masterNode[key].children, subPath);
-                        }
+                        const subPath = `${currentPathString}/${key.replace(/C0xxx/gi, code)}`;
+                        zip[subPath + '/'] = new Uint8Array([0]);
+                        if (masterNode[key].children) await addBranchToZip(masterNode[key].children, subPath);
                     }
                 }
             }
@@ -1184,23 +1162,12 @@
             await addBranchToZip(scaffolderMasterTree, rootFolderName);
 
             fflate.zip(zip, (err, data) => {
-                if (err) {
-                    alert("Errore nella compressione del pacchetto.");
-                    return;
-                }
+                if (err) return;
                 const blob = new Blob([data], { type: 'application/zip' });
                 const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${rootFolderName}.zip`;
-                a.click();
-                alert("Pacchetto ZIP generato con successo!");
+                const a = document.createElement('a'); a.href = url; a.download = `${rootFolderName}.zip`; a.click();
             });
-
-        } catch (err) {
-            console.error(err);
-            alert("Fallita la generazione della commessa.");
-        }
+        } catch (err) { console.error(err); }
     });
 </script>
 
