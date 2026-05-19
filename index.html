@@ -1027,7 +1027,7 @@
     }
 
     // --- SMART PLC PATTERN COMPLIANCE FILE ENGINE ---
-        // --- RIFINED PLC PATTERN ENGINE (FORMATS AS CXXXX-XX PLC+HMI ...) ---
+        // --- RIFINED PLC PATTERN ENGINE (FORMATS AS CXXXX-XX PLC+HMI ...) ---// --- FIXED PLC PATTERN ENGINE (STRICT CXXXX-XX PARSING) ---
     function compareFilesList(masterFiles, targetFiles, activeJobCode) {
         const fileEvaluation = {};
         const filteredMaster = masterFiles.filter(f => f.toLowerCase() !== "pippo.txt");
@@ -1075,25 +1075,26 @@
                 }
 
                 if (masterTemplateName) {
-                    // 1. ADVANCED PREFIX CLEANING AND FORMATTING (Ensures CXXXX-XX structure)
-                    let formattedJobPrefix = activeJobCode; 
+                    // 1. EXTRACT AND RE-FORMAT JOB + MACHINE CODE (e.g., C000601-13082 -> C0006-01)
+                    let formattedJobPrefix = activeJobCode;
                     
-                    // Regex matches patterns like C000601, C0006-01, C0006_01, C0006 01
-                    const complexPrefixMatch = tFile.match(/^([cC]\d+)[\s\-_]*(\d+)?/);
-                    
-                    if (complexPrefixMatch) {
-                        const baseCode = complexPrefixMatch[1].toUpperCase().trim();
-                        const machineExtension = complexPrefixMatch[2];
+                    // Matches "C" followed by digits, capturing the first 4 digits and next 2 digits if available
+                    const strictCleanRegex = /^([cC]\d{4})(\d{2})?/;
+                    const matchCode = tFile.match(strictCleanRegex);
+
+                    if (matchCode) {
+                        const baseJob = matchCode[1].toUpperCase();
+                        const machineNum = matchCode[2];
                         
-                        if (machineExtension) {
-                            // If the file string already has 2 or more digits attached/separated at the end
-                            // force the standard "CXXXX-XX" format explicitly
-                            formattedJobPrefix = `${baseCode}-${machineExtension}`;
-                        } else if (baseCode.length > 5) {
-                            // Handle cases like C000601 compressed without delimiters: split C0006 and 01
-                            const splitBase = baseCode.substring(0, 5);
-                            const splitExt = baseCode.substring(5);
-                            formattedJobPrefix = `${splitBase}-${splitExt}`;
+                        if (machineNum) {
+                            formattedJobPrefix = `${baseJob}-${machineNum}`;
+                        } else {
+                            // Fallback context logic if machine number isn't attached directly to the base code
+                            const activeClean = activeJobCode.replace(/[\s\-_]/g, "");
+                            const contextMatch = activeClean.match(/^([cC]\d{4})(\d{2})?/);
+                            if (contextMatch && contextMatch[2]) {
+                                formattedJobPrefix = `${contextMatch[1].toUpperCase()}-${contextMatch[2]}`;
+                            }
                         }
                     }
 
