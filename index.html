@@ -1027,141 +1027,159 @@
     }
 
     // --- SMART PLC PATTERN COMPLIANCE FILE ENGINE ---
-    function compareFilesList(masterFiles, targetFiles, activeJobCode) {
-        const fileEvaluation = {};
-        const filteredMaster = masterFiles.filter(f => f.toLowerCase() !== "pippo.txt");
-        const filteredTarget = targetFiles.filter(f => f.toLowerCase() !== "pippo.txt");
+        // --- RIFINED PLC PATTERN ENGINE (FORMATS AS CXXXX-XX PLC+HMI ...) ---
+        function compareFilesList(masterFiles, targetFiles, activeJobCode) {
+            const fileEvaluation = {};
+            const filteredMaster = masterFiles.filter(f => f.toLowerCase() !== "pippo.txt");
+            const filteredTarget = targetFiles.filter(f => f.toLowerCase() !== "pippo.txt");
 
-        const masterExpectationsMap = {};
-        filteredMaster.forEach(mFile => {
-            const dynamicExpectedName = mFile.replace(/C0xxx/gi, activeJobCode);
-            masterExpectationsMap[dynamicExpectedName.toLowerCase()] = dynamicExpectedName;
-        });
+            const masterExpectationsMap = {};
+            filteredMaster.forEach(mFile => {
+                const dynamicExpectedName = mFile.replace(/C0xxx/gi, activeJobCode);
+                masterExpectationsMap[dynamicExpectedName.toLowerCase()] = dynamicExpectedName;
+            });
 
-        const unmatchedTargetFiles = [];
-        filteredTarget.forEach(tFile => {
-            const tFileLower = tFile.toLowerCase();
-            if (masterExpectationsMap[tFileLower]) {
-                const correctCaseName = masterExpectationsMap[tFileLower];
-                if (tFile !== correctCaseName) {
-                    fileEvaluation[tFile] = { 
-                        isDir: false, 
-                        status: 'rename-suggested', 
-                        renameTarget: correctCaseName 
-                    };
-                } else {
-                    fileEvaluation[tFile] = { isDir: false, status: 'match' };
-                }
-                delete masterExpectationsMap[tFileLower];
-            } else {
-                unmatchedTargetFiles.push(tFile);
-            }
-        });
-
-        // Advanced dynamic rule parsing for unmatched software files (.zip / .zap*)
-        unmatchedTargetFiles.forEach(tFile => {
-            if (fileEvaluation[tFile]) return; 
-
-            const extensionMatch = tFile.match(/\.(zip|zap\d*)$/i);
-            if (extensionMatch) {
-                const fileExt = extensionMatch[0]; // Retain exact archive casing extension
-
-                // Search inside master files for template placeholder indicators
-                let masterTemplateName = null;
-                for (const lowExp in masterExpectationsMap) {
-                    if (lowExp.includes("plc+hmi") || lowExp.includes(".zap")) {
-                        masterTemplateName = masterExpectationsMap[lowExp];
-                        break;
-                    }
-                }
-
-                if (masterTemplateName) {
-                    // Extract Date Pattern YYYY-MM-DD from target string
-                    const dateRegex = /(\d{4})[\s\-_](\d{2})[\s\-_](\d{2})/;
-                    const dateMatch = tFile.match(dateRegex);
-                    let extractedDate = "2026-01-01"; // Default fallback structure
-                    if (dateMatch) {
-                        extractedDate = `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`;
-                    } else {
-                        // Alt secondary fallback fallback to isolated sequence numbers 
-                        const softDateRegex = /\b(\d{8})\b/;
-                        const softMatch = tFile.match(softDateRegex);
-                        if (softMatch) {
-                            extractedDate = `${softMatch[1].substring(0,4)}-${softMatch[1].substring(4,6)}-${softMatch[1].substring(6,8)}`;
-                        }
-                    }
-
-                    // Extract Surname/Author from tail string segment
-                    const nameWithoutExt = tFile.substring(0, tFile.lastIndexOf('.')).trim();
-                    const wordsToken = nameWithoutExt.split(/[\s\-_]+/);
-                    let extractedSurname = "Cognome";
-                    if (wordsToken.length > 0) {
-                        extractedSurname = wordsToken[wordsToken.length - 1];
-                        // If last token corresponds to a date block, lookup backwards
-                        if (/^\d+$/.test(extractedSurname) && wordsToken.length > 1) {
-                            extractedSurname = wordsToken[wordsToken.length - 2];
-                        }
-                    }
-                    
-                    // Capitalize extracted string attributes
-                    extractedSurname = extractedSurname.charAt(0).toUpperCase() + extractedSurname.slice(1);
-
-                    // Build standard compiled target file structure name
-                    const compiledTargetStandard = `${activeJobCode} PLC+HMI ${extractedDate} ${extractedSurname}${fileExt}`;
-
-                    if (tFile === compiledTargetStandard) {
-                        fileEvaluation[tFile] = { isDir: false, status: 'match' };
-                    } else {
-                        fileEvaluation[tFile] = {
-                            isDir: false,
-                            status: 'rename-suggested',
-                            renameTarget: compiledTargetStandard
+            const unmatchedTargetFiles = [];
+            filteredTarget.forEach(tFile => {
+                const tFileLower = tFile.toLowerCase();
+                if (masterExpectationsMap[tFileLower]) {
+                    const correctCaseName = masterExpectationsMap[tFileLower];
+                    if (tFile !== correctCaseName) {
+                        fileEvaluation[tFile] = { 
+                            isDir: false, 
+                            status: 'rename-suggested', 
+                            renameTarget: correctCaseName 
                         };
+                    } else {
+                        fileEvaluation[tFile] = { isDir: false, status: 'match' };
+                    }
+                    delete masterExpectationsMap[tFileLower];
+                } else {
+                    unmatchedTargetFiles.push(tFile);
+                }
+            });
+
+            unmatchedTargetFiles.forEach(tFile => {
+                if (fileEvaluation[tFile]) return; 
+
+                const extensionMatch = tFile.match(/\.(zip|zap\d*)$/i);
+                if (extensionMatch) {
+                    const fileExt = extensionMatch[0]; 
+
+                    let masterTemplateName = null;
+                    for (const lowExp in masterExpectationsMap) {
+                        if (lowExp.includes("plc+hmi") || lowExp.includes(".zap")) {
+                            masterTemplateName = masterExpectationsMap[lowExp];
+                            break;
+                        }
                     }
 
-                    delete masterExpectationsMap[masterTemplateName.toLowerCase()];
-                    return;
-                }
-            }
+                    if (masterTemplateName) {
+                        // 1. ADVANCED PREFIX CLEANING AND FORMATTING (Ensures CXXXX-XX structure)
+                        let formattedJobPrefix = activeJobCode; 
+                        
+                        // Regex matches patterns like C000601, C0006-01, C0006_01, C0006 01
+                        const complexPrefixMatch = tFile.match(/^([cC]\d+)[\s\-_]*(\d+)?/);
+                        
+                        if (complexPrefixMatch) {
+                            const baseCode = complexPrefixMatch[1].toUpperCase().trim();
+                            const machineExtension = complexPrefixMatch[2];
+                            
+                            if (machineExtension) {
+                                // If the file string already has 2 or more digits attached/separated at the end
+                                // force the standard "CXXXX-XX" format explicitly
+                                formattedJobPrefix = `${baseCode}-${machineExtension}`;
+                            } else if (baseCode.length > 5) {
+                                // Handle cases like C000601 compressed without delimiters: split C0006 and 01
+                                const splitBase = baseCode.substring(0, 5);
+                                const splitExt = baseCode.substring(5);
+                                formattedJobPrefix = `${splitBase}-${splitExt}`;
+                            }
+                        }
 
-            // General string similarity fallback matching rules for standard documents
-            let boundTargetMatchName = null;
-            const tFileLower = tFile.toLowerCase();
+                        // 2. DATE EXTRACTION (YYYY-MM-DD)
+                        const dateRegex = /(\d{4})[\s\-_](\d{2})[\s\-_](\d{2})/;
+                        const dateMatch = tFile.match(dateRegex);
+                        let extractedDate = "2026-01-01"; 
+                        if (dateMatch) {
+                            extractedDate = `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`;
+                        } else {
+                            const softDateRegex = /\b(\d{8})\b/;
+                            const softMatch = tFile.match(softDateRegex);
+                            if (softMatch) {
+                                extractedDate = `${softMatch[1].substring(0,4)}-${softMatch[1].substring(4,6)}-${softMatch[1].substring(6,8)}`;
+                            }
+                        }
 
-            for (const lowerExpected in masterExpectationsMap) {
-                const cleanExpected = masterExpectationsMap[lowerExpected];
-                const targetExt = tFile.substring(tFile.lastIndexOf('.')).toLowerCase();
-                const expectedExt = cleanExpected.substring(cleanExpected.lastIndexOf('.')).toLowerCase();
+                        // 3. SURNAME EXTRACTION
+                        const nameWithoutExt = tFile.substring(0, tFile.lastIndexOf('.')).trim();
+                        const wordsToken = nameWithoutExt.split(/[\s\-_]+/);
+                        let extractedSurname = "Cognome";
+                        if (wordsToken.length > 0) {
+                            extractedSurname = wordsToken[wordsToken.length - 1];
+                            if (/^\d+$/.test(extractedSurname) && wordsToken.length > 1) {
+                                extractedSurname = wordsToken[wordsToken.length - 2];
+                            }
+                        }
+                        
+                        extractedSurname = extractedSurname.charAt(0).toUpperCase() + extractedSurname.slice(1);
 
-                if (targetExt === expectedExt && targetExt.length > 1) {
-                    const cleanT = tFileLower.replace(activeJobCode.toLowerCase(), "").replace(/[\s\-_]/g, "");
-                    const cleanE = lowerExpected.replace(activeJobCode.toLowerCase(), "").replace(/[\s\-_]/g, "");
-                    
-                    if (cleanT.includes(cleanE) || cleanE.includes(cleanT) || cleanT.substring(0,5) === cleanE.substring(0,5)) {
-                        boundTargetMatchName = cleanExpected;
-                        break;
+                        // 4. COMPILE RIGID TARGET STANDARD NAME
+                        const compiledTargetStandard = `${formattedJobPrefix} PLC+HMI ${extractedDate} ${extractedSurname}${fileExt}`;
+
+                        if (tFile === compiledTargetStandard) {
+                            fileEvaluation[tFile] = { isDir: false, status: 'match' };
+                        } else {
+                            fileEvaluation[tFile] = {
+                                isDir: false,
+                                status: 'rename-suggested',
+                                renameTarget: compiledTargetStandard
+                            };
+                        }
+
+                        delete masterExpectationsMap[masterTemplateName.toLowerCase()];
+                        return;
                     }
                 }
+
+                // General string similarity fallback matching rules for standard documents
+                let boundTargetMatchName = null;
+                const tFileLower = tFile.toLowerCase();
+
+                for (const lowerExpected in masterExpectationsMap) {
+                    const cleanExpected = masterExpectationsMap[lowerExpected];
+                    const targetExt = tFile.substring(tFile.lastIndexOf('.')).toLowerCase();
+                    const expectedExt = cleanExpected.substring(cleanExpected.lastIndexOf('.')).toLowerCase();
+
+                    if (targetExt === expectedExt && targetExt.length > 1) {
+                        const cleanT = tFileLower.replace(activeJobCode.toLowerCase(), "").replace(/[\s\-_]/g, "");
+                        const cleanE = lowerExpected.replace(activeJobCode.toLowerCase(), "").replace(/[\s\-_]/g, "");
+                        
+                        if (cleanT.includes(cleanE) || cleanE.includes(cleanT) || cleanT.substring(0,5) === cleanE.substring(0,5)) {
+                            boundTargetMatchName = cleanExpected;
+                            break;
+                        }
+                    }
+                }
+
+                if (boundTargetMatchName) {
+                    fileEvaluation[tFile] = {
+                        isDir: false,
+                        status: 'rename-suggested',
+                        renameTarget: boundTargetMatchName
+                    };
+                    delete masterExpectationsMap[boundTargetMatchName.toLowerCase()];
+                } else {
+                    fileEvaluation[tFile] = { isDir: false, status: 'extra' };
+                }
+            });
+
+            for (const lowerKey in masterExpectationsMap) {
+                fileEvaluation[masterExpectationsMap[lowerKey]] = { isDir: false, status: 'missing' };
             }
 
-            if (boundTargetMatchName) {
-                fileEvaluation[tFile] = {
-                    isDir: false,
-                    status: 'rename-suggested',
-                    renameTarget: boundTargetMatchName
-                };
-                delete masterExpectationsMap[boundTargetMatchName.toLowerCase()];
-            } else {
-                fileEvaluation[tFile] = { isDir: false, status: 'extra' };
-            }
-        });
-
-        for (const lowerKey in masterExpectationsMap) {
-            fileEvaluation[masterExpectationsMap[lowerKey]] = { isDir: false, status: 'missing' };
+            return fileEvaluation;
         }
-
-        return fileEvaluation;
-    }
 
     // --- RE-RENDER INTERFACCIA ---
     function applyFiltersAndRender() {
