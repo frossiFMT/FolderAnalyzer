@@ -1,0 +1,45 @@
+/* Add to existing <style> */
+.tree-node-content { cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.tree-node-content:hover { background: #f1f5f9; border-radius: 4px; }
+
+.children-container.collapsed { display: none; }
+
+.toggle-icon { 
+    font-size: 0.7rem; 
+    transition: transform 0.2s; 
+    cursor: pointer;
+    width: 12px;
+}
+.collapsed + .children-container { display: none; }
+.node-label.has-children::before {
+    content: '▼';
+    display: inline-block;
+    margin-right: 5px;
+    font-size: 0.6rem;
+}
+.node-label.has-children.collapsed::before {
+    transform: rotate(-90deg);
+}
+
+.controls-bar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+}
+.file-node {
+    padding-left: 20px;
+    font-weight: normal;
+}
+.btn-delete-extra {
+    background-color: #ff4d4d;
+    color: white;
+    border: none;
+    padding: 2px 8px;
+    margin-left: 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+.btn-delete-extra:hover {
+    background-color: #cc0000;
+}

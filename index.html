@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Folder Analyzer Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.min.js"></script>
+    <style>
+        /* --- BASE STYLES --- */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        h1 { margin-top: 0; color: #0f172a; }
+
+        /* --- TABS NAVIGATION --- */
+        .tabs-bar {
+            display: flex;
+            gap: 10px;
+            border-bottom: 2px solid #e2e8f0;
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            cursor: pointer;
+            color: #64748b;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            font-weight: 500;
+        }
+        .tab-btn.active {
+            color: #2563eb;
+            border-bottom: 2px solid #2563eb;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* --- LOADING INTERFACE --- */
+        .picker-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .picker-box { position: relative; flex: 1; }
+        .picker-btn {
+            display: block;
+            text-align: center;
+            background-color: #2563eb;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .picker-btn:hover { background-color: #1d4ed8; }
+        .picker-btn.loaded { background-color: #10b981; }
+        
+        #target-btn {
+            background-color: #64748b;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        /* --- COMPLIANCE UI BAR & COUNTERS --- */
+        .compliance-container {
+            background: #f1f5f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .compliance-header {
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 4px;
+        }
+        .progress-track {
+            background: #e2e8f0;
+            height: 12px;
+            border-radius: 6px;
+            overflow: hidden;
+            width: 100%;
+        }
+        .progress-bar {
+            background: #10b981;
+            width: 0%;
+            height: 100%;
+            transition: width 0.4s ease;
+        }
+        
+        /* Summary Counters Dashboard */
+        .dashboard-counters {
+            display: flex;
+            gap: 15px;
+            border-top: 1px solid #cbd5e1;
+            padding-top: 10px;
+        }
+        .counter-badge-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+        }
+
+        /* --- RENAME BANNER --- */
+        .banner {
+            background-color: #fef3c7;
+            border-left: 4px solid #d97706;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+        .hidden { display: none !important; }
+
+        /* --- FILTERS & CONTROLS BAR --- */
+        .controls-wrapper {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .search-and-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .search-box-container {
+            flex: 1;
+            min-width: 250px;
+        }
+        .search-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            box-sizing: border-box;
+        }
+        .filter-buttons-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .filter-btn {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #475569;
+        }
+        .filter-btn.active {
+            background: #2563eb;
+            color: white;
+            border-color: #2563eb;
+        }
+        .actions-buttons-group {
+            display: flex;
+            gap: 6px;
+        }
+        .btn-action {
+            background: #fff;
+            border: 1px solid #cbd5e1;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .btn-action:hover { background: #f8fafc; }
+        
+        /* --- TREE VIEW STRUCTURE --- */
+        #tree-root {
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .tree-node { margin: 4px 0; }
+        
+        .tree-node-content { 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            padding: 4px 8px;
+        }
+        .tree-node-content:hover { background: #f1f5f9; border-radius: 4px; }
+
+        .children-container { padding-left: 20px; }
+        .children-container.collapsed { display: none; }
+
+        .node-label::before {
+            content: '▼';
+            display: inline-block;
+            margin-right: 5px;
+            font-size: 0.6rem;
+            transition: transform 0.2s;
+            width: 12px;
+        }
+        .node-label.collapsed::before {
+            transform: rotate(-90deg);
+        }
+        .node-label.no-children::before {
+            content: '';
+            width: 12px;
+        }
+
+        .file-node {
+            padding-left: 28px;
+            font-weight: normal;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* Inline Extension Badge Label Style */
+        .ext-badge {
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background-color: #cbd5e1;
+            color: #334155;
+            text-transform: uppercase;
+            min-width: 38px;
+            text-align: center;
+            display: inline-block;
+            box-sizing: border-box;
+        }
+        
+        /* Specific dynamic colored extension labels */
+        .ext-zap { background-color: #fef3c7; color: #d97706; border: 1px solid #f59e0b; }
+        .ext-pdf { background-color: #fee2e2; color: #dc2626; border: 1px solid #f87171; }
+        .ext-zip { background-color: #e0f2fe; color: #0369a1; border: 1px solid #38bdf8; }
+        .ext-txt { background-color: #f1f5f9; color: #475569; border: 1px solid #94a3b8; }
+        
+        /* Highlighting match text search */
+        .text-highlight {
+            background-color: #fef08a;
+            color: #000000;
+            font-weight: 600;
+            border-radius: 2px;
+        }
+
+        /* Validation States */
+        .status-match { color: #0f172a; }
+        .status-missing { color: #94a3b8; font-style: italic; }
+        .status-extra { color: #dc2626; font-weight: 500; }
+        .status-zap-error { color: #d97706; font-weight: 500; }
+        .status-empty-error { color: #b91c1c; font-weight: 500; }
+
+        .badge {
+            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        .badge-missing { background: #e2e8f0; color: #475569; }
+        .badge-extra { background: #fee2e2; color: #ef4444; }
+        .badge-zap-missing { background: #fef3c7; color: #d97706; }
+        .badge-empty-error { background: #fca5a5; color: #b91c1c; }
+
+        .btn-delete-extra {
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            padding: 2px 8px;
+            margin-left: 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .btn-delete-extra:hover {
+            background-color: #cc0000;
+        }
+
+        /* --- SCAFFOLDER FORM --- */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: 600; margin-bottom: 5px; }
+        .form-group input {
+            width: 100%; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;
+        }
+        .machine-item { display: flex; gap: 10px; margin-bottom: 10px; }
+        .machine-id-input { width: 80px !important; }
+        .machine-desc-input { flex: 1; }
+        .btn-remove-machine {
+            background: #ef4444; color: white; border: none; padding: 0 12px; border-radius: 6px; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="tabs-bar">
+        <button class="tab-btn active" id="tab-btn-analyzer">🔍 Analyzer Commesse</button>
+        <button class="tab-btn" id="tab-btn-scaffolder">🏗️ Scaffolder Nuovo Progetto</button>
+    </div>
+
+    <div id="analyzer-tab" class="tab-content active">
+        <h1>Analizzatore di Conformità Cartelle</h1>
+        
+        <div class="picker-container">
+            <div class="picker-box">
+                <button id="master-btn" class="picker-btn" style="width: 100%; border: none; padding: 15px;">1. Seleziona Master Modello</button>
+            </div>
+            <div class="picker-box">
+                <button id="target-btn" class="picker-btn" style="width: 100%; border: none; padding: 15px;">2. Seleziona Cartella Commessa Reale</button>
+            </div>
+        </div>
+
+        <div id="results-panel" class="hidden">
+            <div class="compliance-container">
+                <div>
+                    <div class="compliance-header">
+                        <span>Grado di Allineamento Standard</span>
+                        <span id="compliance-score">0%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div id="compliance-bar" class="progress-bar"></div>
+                    </div>
+                </div>
+                <div class="dashboard-counters">
+                    <div class="counter-badge-item" style="color:#475569;"><span style="font-size:1rem;">🧩</span> Allineati: <span id="cnt-match">0</span></div>
+                    <div class="counter-badge-item" style="color:#64748b;"><span style="font-size:1rem;">❔</span> Mancanti: <span id="cnt-missing">0</span></div>
+                    <div class="counter-badge-item" style="color:#ef4444;"><span style="font-size:1rem;">⚠️</span> Elementi Extra: <span id="cnt-extra">0</span></div>
+                    <div class="counter-badge-item" style="color:#d97706;"><span style="font-size:1rem;">📦</span> Errori PLC/ZAP: <span id="cnt-critical">0</span></div>
+                </div>
+            </div>
+
+            <div id="fix-container" class="banner hidden">
+                <strong>Nome cartella non conforme.</strong> Rinominare da <span id="current-folder-name" style="text-decoration:line-through"></span> a: <strong id="suggested-folder-name"></strong>
+            </div>
+
+            <div class="controls-wrapper">
+                <div class="search-and-actions">
+                    <div class="search-box-container">
+                        <input type="text" id="tree-search-input" class="search-input" placeholder="🔍 Cerca file o cartella nell'albero in tempo reale...">
+                    </div>
+                    <div class="filter-buttons-group">
+                        <span style="font-size:0.85rem; font-weight:600; color:#64748b; margin-right:4px;">Filtra Vista:</span>
+                        <button class="filter-btn active" id="flt-all">Tutto</button>
+                        <button class="filter-btn" id="flt-errors">Solo Anomalie</button>
+                        <button class="filter-btn" id="flt-extra">Solo Extra</button>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 8px; border-top: 1px dashed #e2e8f0; padding-top: 10px;">
+                    <div class="actions-buttons-group">
+                        <button class="btn-action" id="btn-direct-fix">🛠️ Allinea Struttura Cartelle</button>
+                        <button class="btn-action" id="btn-expand-all">↔️ Espandi Tutto</button>
+                        <button class="btn-action" id="btn-collapse-all">↕️ Collassa Tutto</button>
+                        <button class="btn-action" id="btn-export-json">💾 Esporta Report JSON</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tree-root"></div>
+        </div>
+    </div>
+
+    <div id="scaffolder-tab" class="tab-content">
+        <h1>Generatore Struttura Commessa standard</h1>
+        
+        <div class="form-group">
+            <label>Seleziona Master Modello di Riferimento</label>
+            <button id="scaffolder-master-btn" class="picker-btn" style="width:100%; border:none; padding:12px; background-color:#64748b;">Seleziona Cartella Master</button>
+        </div>
+        <div class="form-group">
+            <label>Codice Commessa (es. C26001)</label>
+            <input type="text" id="new-project-code" placeholder="C26001">
+        </div>
+        <div class="form-group">
+            <label>Nome Cliente / Impianto</label>
+            <input type="text" id="new-project-customer" placeholder="BARILLA">
+        </div>
+
+        <div class="form-group">
+            <label style="display:flex; justify-content:space-between; align-items:center;">
+                Elenco Macchine della Linea
+                <button type="button" class="btn-action" id="btn-add-machine" style="padding:4px 10px;">+ Aggiungi Macchina</button>
+            </label>
+            <div id="machines-container">
+                <div class="machine-item">
+                    <input type="text" class="machine-id-input" placeholder="N°: 01" value="01">
+                    <input type="text" class="machine-desc-input" placeholder="Tipo Macchina: Es. Formatura" value="Formatrice">
+                </div>
+            </div>
+        </div>
+
+        <button class="picker-btn" id="btn-generate-commessa-direct" style="width:100%; border:none; margin-top:20px;">⚡ Genera Pacchetto Commessa Standard (.ZIP)</button>
+    </div>
+</div>
+
+<script>
+    // --- GLOBAL STATE STORAGE VARIABLES ---
+    let masterTree = {};
+    let targetTree = {};
+    let comparisonData = {};
+    let currentRootName = "";
+    let suggestedRootName = "";
+    let scaffolderMasterTree = {};
+    let targetDirectoryHandle = null;
+    
+    // UI Filtering State Variables
+    let currentActiveFilter = "all"; 
+    let currentSearchQuery = "";
+    let rendersCounter = 0;
+
+    // --- TAB VIEW NAVIGATION TOGGLE ---
+    document.getElementById('tab-btn-analyzer').addEventListener('click', () => switchTab('analyzer-tab'));
+    document.getElementById('tab-btn-scaffolder').addEventListener('click', () => switchTab('scaffolder-tab'));
+
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(tabId === 'analyzer-tab' ? 'tab-btn-analyzer' : 'tab-btn-scaffolder').classList.add('active');
+        document.getElementById(tabId).classList.add('active');
+    }
+
+    function formatFolderName(name) {
+        const regex = /^(_?)([cC]\d+)[\s\-_]+(.+)$/;
+        const match = name.match(regex);
+        if (match) return `${match[2].toUpperCase()} - ${match[3].trim().toUpperCase()}`;
+        return name.toUpperCase();
+    }
+
+    function extractJobCode(folderName) {
+        const regex = /^([cC]\d+)/;
+        const match = folderName.match(regex);
+        return match ? match[1].toUpperCase() : "C0XXX";
+    }
+
+    // --- FILE SYSTEM SCANNER HIERARCHY MAP ---
+    async function handleDirectoryScan(dirHandle) {
+        const virtualRoot = { children: {}, containedFiles: [] };
+        
+        async function readRecursively(handle, currentBranch) {
+            for await (const entry of handle.values()) {
+                if (entry.kind === 'file') {
+                    currentBranch.containedFiles.push(entry.name);
+                } else if (entry.kind === 'directory') {
+                    currentBranch.children[entry.name] = { children: {}, containedFiles: [] };
+                    await readRecursively(entry, currentBranch.children[entry.name]);
+                }
+            }
+        }
+        await readRecursively(dirHandle, virtualRoot);
+        return virtualRoot.children;
+    }
+
+    // --- BINDING FOLDER BUTTON SELECTORS ---
+    document.getElementById('master-btn').addEventListener('click', async () => {
+        try {
+            const handle = await window.showDirectoryPicker();
+            masterTree = await handleDirectoryScan(handle);
+            document.getElementById('master-btn').textContent = `📁 Master Loaded: ${handle.name}`;
+            document.getElementById('master-btn').classList.add('loaded');
+            
+            const targetBtn = document.getElementById('target-btn');
+            targetBtn.style.pointerEvents = "auto";
+            targetBtn.style.opacity = "1";
+            targetBtn.style.backgroundColor = "#2563eb";
+        } catch (err) {
+            console.error("Master selection canceled or failed", err);
+        }
+    });
+
+    document.getElementById('target-btn').addEventListener('click', async () => {
+        try {
+            targetDirectoryHandle = await window.showDirectoryPicker();
+            targetTree = await handleDirectoryScan(targetDirectoryHandle);
+            currentRootName = targetDirectoryHandle.name;
+            
+            document.getElementById('target-btn').textContent = `📁 Target Loaded: ${currentRootName}`;
+            document.getElementById('target-btn').classList.add('loaded');
+            
+            executeCoreAnalysis();
+        } catch (err) {
+            console.error("Target selection canceled or failed", err);
+        }
+    });
+
+    document.getElementById('scaffolder-master-btn').addEventListener('click', async () => {
+        try {
+            const handle = await window.showDirectoryPicker();
+            scaffolderMasterTree = await handleDirectoryScan(handle);
+            document.getElementById('scaffolder-master-btn').textContent = `📁 Master Loaded: ${handle.name}`;
+            document.getElementById('scaffolder-master-btn').style.backgroundColor = "#10b981";
+        } catch (err) {
+            console.error(err);
+        }
+    });
+
+    // --- DEEP RECURSIVE SEARCH ---
+    function scanTreeBranchForExtension(node, targetPattern) {
+        if (!node) return false;
+        
+        if (node.containedFiles) {
+            const files = Array.isArray(node.containedFiles) ? node.containedFiles : Object.keys(node.containedFiles);
+            if (files.some(f => f.toLowerCase().includes(targetPattern.toLowerCase()))) {
+                return true;
+            }
+        }
+        
+        if (node.children) {
+            for (const key in node.children) {
+                if (key !== 'containedFiles' && scanTreeBranchForExtension(node.children[key], targetPattern)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // --- COUNTER CHECKER FOR EMPTY DIRECTORIES AT ANY DEPTH ---
+    function isTreeBranchCompletelyEmpty(node) {
+        if (!node) return true;
+        const files = node.containedFiles ? (Array.isArray(node.containedFiles) ? node.containedFiles : Object.keys(node.containedFiles)) : [];
+        if (files.length > 0) return false;
+
+        if (node.children) {
+            const childKeys = Object.keys(node.children).filter(k => k !== 'containedFiles');
+            if (childKeys.length > 0) {
+                for (const key of childKeys) {
+                    if (!isTreeBranchCompletelyEmpty(node.children[key])) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    // --- RECURSIVE PLC SCANNER UTILITY ---
+    function locatePlcFolderDeep(node) {
+        if (!node || !node.children) return null;
+        
+        for (const key in node.children) {
+            if (key.toLowerCase().includes("plc") || key.toLowerCase().includes("10.")) {
+                return node.children[key];
+            }
+            const deepMatch = locatePlcFolderDeep(node.children[key]);
+            if (deepMatch) return deepMatch;
+        }
+        return null;
+    }
+
+    // --- TREE COMPARATOR ENGINE FUNCTION ---
+    function compareTrees(master, target) {
+        const mergedResult = {};
+        const activeJobCode = extractJobCode(currentRootName);
+
+        let masterMachineKey = null;
+        for (const key in master) {
+            if (key.toLowerCase().includes("master directory macchina")) {
+                masterMachineKey = key;
+                break;
+            }
+        }
+
+        const matchedTargetMachineKeys = new Set();
+        if (masterMachineKey) {
+            const machinePattern = new RegExp(`^${activeJobCode}\\s*-\\s*\\d+\\s*.*|^${activeJobCode}-\\d+\\s*.*`, 'i');
+            for (const targetKey in target) {
+                if (machinePattern.test(targetKey)) {
+                    matchedTargetMachineKeys.add(targetKey);
+                    
+                    const targetSubtree = target[targetKey].children || {};
+                    let plcFolderRef = locatePlcFolderDeep(target[targetKey]);
+
+                    let branchStatus = 'match';
+
+                    if (plcFolderRef) {
+                        if (isTreeBranchCompletelyEmpty(plcFolderRef)) {
+                            branchStatus = 'empty-error';
+                        } else {
+                            let zapArchivedDetected = scanTreeBranchForExtension(plcFolderRef, ".zap");
+
+                            if (!zapArchivedDetected) {
+                                for (const subKey in targetSubtree) {
+                                    if (subKey.toLowerCase().includes("display") || subKey.toLowerCase().includes("hmi") || subKey.toLowerCase().includes("40.")) {
+                                        if (scanTreeBranchForExtension(targetSubtree[subKey], ".zap")) {
+                                            zapArchivedDetected = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (!zapArchivedDetected) {
+                                    branchStatus = 'zap-error';
+                                }
+                            }
+                        }
+                    } else {
+                        let backupZapCheck = false;
+                        for (const subKey in targetSubtree) {
+                            if (subKey.toLowerCase().includes("display") || subKey.toLowerCase().includes("hmi") || subKey.toLowerCase().includes("40.")) {
+                                if (scanTreeBranchForExtension(targetSubtree[subKey], ".zap")) {
+                                    backupZapCheck = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!backupZapCheck) {
+                            branchStatus = 'zap-error';
+                        }
+                    }
+
+                    mergedResult[targetKey] = {
+                        isDir: true,
+                        status: branchStatus,
+                        containedFiles: compareFilesList(master[masterMachineKey].containedFiles || [], target[targetKey].containedFiles || []),
+                        children: compareTrees(master[masterMachineKey].children || {}, targetSubtree)
+                    };
+                }
+            }
+        }
+
+        for (const masterKey in master) {
+            if (masterKey === 'containedFiles') continue;
+            const processedMasterKey = masterKey.replace(/C0xxx/gi, activeJobCode);
+            if (masterKey === masterMachineKey) {
+                if (matchedTargetMachineKeys.size === 0) {
+                    mergedResult[masterKey] = {
+                        isDir: true,
+                        status: 'missing',
+                        containedFiles: compareFilesList(master[masterMachineKey].containedFiles || [], []),
+                        children: compareTrees(master[masterMachineKey].children || {}, {})
+                    };
+                }
+                continue;
+            }
+
+            if (Object.prototype.hasOwnProperty.call(target, processedMasterKey)) {
+                mergedResult[processedMasterKey] = {
+                    isDir: true,
+                    status: 'match',
+                    containedFiles: compareFilesList(master[masterKey].containedFiles || [], target[processedMasterKey].containedFiles || []),
+                    children: compareTrees(master[masterKey].children || {}, target[processedMasterKey].children || {})
+                };
+            } else {
+                mergedResult[processedMasterKey] = {
+                    isDir: true,
+                    status: 'missing',
+                    containedFiles: compareFilesList(master[masterKey].containedFiles || [], []),
+                    children: compareTrees(master[masterKey].children || {}, {})
+                };
+            }
+        }
+
+        for (const targetKey in target) {
+            if (targetKey === 'containedFiles' || matchedTargetMachineKeys.has(targetKey)) continue;
+            const correspondingMasterKey = targetKey.replace(new RegExp(activeJobCode, 'gi'), 'C0xxx');
+            if (!Object.prototype.hasOwnProperty.call(master, correspondingMasterKey) && !Object.prototype.hasOwnProperty.call(master, targetKey)) {
+                mergedResult[targetKey] = {
+                    isDir: true,
+                    status: 'extra',
+                    containedFiles: compareFilesList([], target[targetKey].containedFiles || []),
+                    children: compareTrees({}, target[targetKey].children || {})
+                };
+            }
+        }
+
+        return mergedResult;
+    }
+
+    // --- FILE COMPARATOR COMPONENT ---
+    function compareFilesList(masterFiles, targetFiles) {
+        const fileEvaluation = {};
+        const filteredMaster = masterFiles.filter(f => f.toLowerCase() !== "pippo.txt");
+        const filteredTarget = targetFiles.filter(f => f.toLowerCase() !== "pippo.txt");
+
+        filteredMaster.forEach(f => {
+            if (filteredTarget.includes(f)) {
+                fileEvaluation[f] = { isDir: false, status: 'match' };
+            } else {
+                fileEvaluation[f] = { isDir: false, status: 'missing' };
+            }
+        });
+        filteredTarget.forEach(f => {
+            if (!filteredMaster.includes(f)) {
+                fileEvaluation[f] = { isDir: false, status: 'extra' };
+            }
+        });
+        return fileEvaluation;
+    }
+
+    // --- MAIN EXECUTION PIPELINE ---
+    function executeCoreAnalysis() {
+        suggestedRootName = formatFolderName(currentRootName);
+        
+        const fixContainer = document.getElementById('fix-container');
+        if (currentRootName !== suggestedRootName) {
+            document.getElementById('current-folder-name').textContent = currentRootName;
+            document.getElementById('suggested-folder-name').textContent = suggestedRootName;
+            fixContainer.classList.remove('hidden');
+        } else {
+            fixContainer.classList.add('hidden');
+        }
+
+        comparisonData = compareTrees(masterTree, targetTree);
+        
+        document.getElementById('results-panel').classList.remove('hidden');
+        applyFiltersAndRender();
+    }
+
+    // --- METRICS CALCULATOR DASHBOARD ---
+    function updateDashboardMetrics() {
+        let match = 0, missing = 0, extra = 0, critical = 0;
+
+        function scanMetrics(tree) {
+            for (const key in tree) {
+                if (key === 'containedFiles') continue;
+                const node = tree[key];
+                
+                if (['zap-error', 'empty-error'].includes(node.status)) critical++;
+                else if (node.status === 'missing') missing++;
+                else if (node.status === 'extra') extra++;
+                else if (node.status === 'match') match++;
+
+                if (node.containedFiles) {
+                    for (const f in node.containedFiles) {
+                        const fStatus = node.containedFiles[f].status;
+                        if (fStatus === 'missing') missing++;
+                        if (fStatus === 'extra') extra++;
+                        if (fStatus === 'match') match++;
+                    }
+                }
+                if (node.children) scanMetrics(node.children);
+            }
+        }
+
+        scanMetrics(comparisonData);
+
+        document.getElementById('cnt-match').textContent = match;
+        document.getElementById('cnt-missing').textContent = missing;
+        document.getElementById('cnt-extra').textContent = extra;
+        document.getElementById('cnt-critical').textContent = critical;
+
+        const totalExpected = match + missing + critical;
+        const score = totalExpected > 0 ? Math.round((match / totalExpected) * 100) : 100;
+        
+        document.getElementById('compliance-score').textContent = `${score}%`;
+        document.getElementById('compliance-bar').style.width = `${score}%`;
+    }
+
+    // --- FILTER INTERFACE LOGIC MAPS ---
+    function applyFiltersAndRender() {
+        rendersCounter = 0;
+        const rootContainer = document.getElementById('tree-root');
+        renderTree(comparisonData, rootContainer);
+        updateDashboardMetrics();
+    }
+
+    document.getElementById('tree-search-input').addEventListener('input', (e) => {
+        currentSearchQuery = e.target.value.toLowerCase().trim();
+        applyFiltersAndRender();
+    });
+
+    document.getElementById('flt-all').addEventListener('click', (e) => toggleFilterButton(e.target, 'all'));
+    document.getElementById('flt-errors').addEventListener('click', (e) => toggleFilterButton(e.target, 'errors'));
+    document.getElementById('flt-extra').addEventListener('click', (e) => toggleFilterButton(e.target, 'extra'));
+
+    function toggleFilterButton(activeBtn, type) {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        activeBtn.classList.add('active');
+        currentActiveFilter = type;
+        applyFiltersAndRender();
+    }
+
+    // --- EXPAND / COLLAPSE UI TRIGGERS ---
+    document.getElementById('btn-expand-all').addEventListener('click', () => {
+        document.querySelectorAll('.children-container').forEach(c => c.classList.remove('collapsed'));
+        document.querySelectorAll('.tree-node-content').forEach(n => n.classList.remove('collapsed'));
+    });
+
+    document.getElementById('btn-collapse-all').addEventListener('click', () => {
+        document.querySelectorAll('.children-container').forEach(c => c.classList.add('collapsed'));
+        document.querySelectorAll('.tree-node-content').forEach(n => n.classList.add('collapsed'));
+    });
+
+    // --- HELPER FILTER CHECK ENGINES ---
+    function checkNodeMatchesSearch(key, node, query) {
+        if (!query) return true;
+        if (key.toLowerCase().includes(query)) return true;
+        
+        if (node.containedFiles) {
+            for (const f in node.containedFiles) {
+                if (f.toLowerCase().includes(query)) return true;
+            }
+        }
+        if (node.children) {
+            for (const childKey in node.children) {
+                if (childKey === 'containedFiles') continue;
+                if (checkNodeMatchesSearch(childKey, node.children[childKey], query)) return true;
+            }
+        }
+        return false;
+    }
+
+    function checkTreeBranchHasStatus(node, filterType) {
+        if (filterType === 'all') return true;
+        
+        if (filterType === 'errors') {
+            if (['missing', 'zap-error', 'empty-error'].includes(node.status)) return true;
+        }
+        if (filterType === 'extra' && node.status === 'extra') {
+            return true;
+        }
+
+        if (node.containedFiles) {
+            for (const f in node.containedFiles) {
+                const fStatus = node.containedFiles[f].status;
+                if (filterType === 'errors' && fStatus === 'missing') return true;
+                if (filterType === 'extra' && fStatus === 'extra') return true;
+            }
+        }
+
+        if (node.children) {
+            for (const childKey in node.children) {
+                if (childKey === 'containedFiles') continue;
+                if (checkTreeBranchHasStatus(node.children[childKey], filterType)) return true;
+            }
+        }
+        return false;
+    }
+
+    function highlightTextMatch(text, query) {
+        if (!query) return `<span>${text}</span>`;
+        const index = text.toLowerCase().indexOf(query);
+        if (index === -1) return `<span>${text}</span>`;
+        
+        const prefix = text.substring(0, index);
+        const match = text.substring(index, index + query.length);
+        const suffix = text.substring(index + query.length);
+        return `<span>${prefix}</span><span class="text-highlight">${match}</span><span>${suffix}</span>`;
+    }
+
+    // --- GRAPHICAL TREE RENDERER ---
+    function renderTree(tree, container, currentRelativePath = []) {
+        if (currentRelativePath.length === 0) container.innerHTML = '';
+    
+        Object.keys(tree).sort().forEach(key => {
+            if (key === 'containedFiles') return; 
+        
+            const node = tree[key];
+            const nodePath = [...currentRelativePath, key];
+            
+            const searchMatch = checkNodeMatchesSearch(key, node, currentSearchQuery);
+            const filterMatch = checkTreeBranchHasStatus(node, currentActiveFilter);
+            
+            if (!searchMatch || !filterMatch) return; 
+            rendersCounter++;
+
+            const realChildrenKeys = node.children ? Object.keys(node.children).filter(k => k !== 'containedFiles') : [];
+            const hasChildren = realChildrenKeys.length > 0;
+            const hasFiles = node.containedFiles && Object.keys(node.containedFiles).length > 0;
+            const isExpandable = hasChildren || hasFiles;
+            
+            const nodeDiv = document.createElement('div');
+            nodeDiv.className = 'tree-node';
+            
+            const nodeContent = document.createElement('div');
+            nodeContent.className = `tree-node-content node-label status-${node.status}`;
+            if (!isExpandable) nodeContent.classList.add('no-children');
+            
+            let badgeText = '';
+            if (node.status === 'missing') badgeText = 'Mancante';
+            if (node.status === 'extra') badgeText = 'Extra';
+            if (node.status === 'zap-error') badgeText = 'Manca Archivio .ZAP';
+            if (node.status === 'empty-error') badgeText = 'Cartella PLC Vuota';
+            
+            const labelSpan = document.createElement('span');
+            labelSpan.innerHTML = highlightTextMatch(key, currentSearchQuery);
+            
+            const folderIcon = document.createElement('span');
+            folderIcon.style.fontSize = '1.1rem';
+            folderIcon.style.lineHeight = '1';
+            folderIcon.textContent = '📁 ';
+            
+            nodeContent.appendChild(folderIcon);
+            nodeContent.appendChild(labelSpan);
+            
+            if (badgeText) {
+                const badgeSpan = document.createElement('span');
+                badgeSpan.className = `badge badge-${node.status}`;
+                badgeSpan.textContent = badgeText;
+                nodeContent.appendChild(badgeSpan);
+            }
+            
+            if (node.status === 'extra') {
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn-delete-extra';
+                deleteBtn.textContent = '🗑️ Elimina';
+                deleteBtn.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    executeDirectDeletion(nodePath, true);
+                });
+                nodeContent.appendChild(deleteBtn);
+            }
+            
+            nodeDiv.appendChild(nodeContent);
+            
+            if (isExpandable) {
+                const childContainer = document.createElement('div');
+                
+                if (currentSearchQuery !== "" || currentActiveFilter !== "all") {
+                    childContainer.className = 'children-container';
+                } else {
+                    childContainer.className = 'children-container collapsed';
+                    nodeContent.classList.add('collapsed');
+                }
+                
+                if (node.children) {
+                    renderTree(node.children, childContainer, nodePath);
+                }
+                
+                if (node.containedFiles) {
+                    Object.keys(node.containedFiles).sort().forEach(fName => {
+                        const fileNode = node.containedFiles[fName];
+                        const fileMatch = currentSearchQuery === "" || fName.toLowerCase().includes(currentSearchQuery);
+                        
+                        let fileFilterMatch = true;
+                        if (currentActiveFilter === 'errors' && fileNode.status !== 'missing') fileFilterMatch = false;
+                        if (currentActiveFilter === 'extra' && fileNode.status !== 'extra') fileFilterMatch = false;
+                        
+                        if (!fileMatch || !fileFilterMatch) return;
+
+                        const fileDiv = document.createElement('div');
+                        fileDiv.className = `file-node status-${fileNode.status}`;
+                        
+                        const ext = fName.includes('.') ? fName.split('.').pop().toLowerCase() : 'txt';
+                        const extBadge = document.createElement('span');
+                        extBadge.className = `ext-badge ext-${ext}`;
+                        extBadge.textContent = ext;
+                        
+                        const fileLabel = document.createElement('span');
+                        fileLabel.innerHTML = highlightTextMatch(fName, currentSearchQuery);
+                        
+                        fileDiv.appendChild(extBadge);
+                        fileDiv.appendChild(fileLabel);
+                        
+                        if (fileNode.status === 'missing' || fileNode.status === 'extra') {
+                            const fBadge = document.createElement('span');
+                            fBadge.className = `badge badge-${fileNode.status}`;
+                            fBadge.textContent = fileNode.status === 'missing' ? 'Mancante' : 'Extra';
+                            fileDiv.appendChild(fBadge);
+                        }
+                        
+                        childContainer.appendChild(fileDiv);
+                    });
+                }
+                
+                nodeDiv.appendChild(childContainer);
+                
+                nodeContent.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    childContainer.classList.toggle('collapsed');
+                    nodeContent.classList.toggle('collapsed');
+                });
+            }
+            
+            container.appendChild(nodeDiv);
+        });
+    }
+
+    // --- FILE/FOLDER MUTATION DELETION AUTOMATION ---
+    async function executeDirectDeletion(pathArray, isDirectory = true) {
+        if (!targetDirectoryHandle) return;
+        
+        // Explicitly check/verify write authorization
+        const opts = { mode: 'readwrite' };
+        if (await targetDirectoryHandle.queryPermission(opts) !== 'granted') {
+            if (await targetDirectoryHandle.requestPermission(opts) !== 'granted') {
+                alert("Impossibile procedere senza permessi di scrittura sulla cartella.");
+                return;
+            }
+        }
+
+        if (!confirm(`Sicuro di voler eliminare definitivamente: ${pathArray.join('/')}?`)) return;
+
+        try {
+            let currentHandle = targetDirectoryHandle;
+            for (let i = 0; i < pathArray.length - 1; i++) {
+                currentHandle = await currentHandle.getDirectoryHandle(pathArray[i]);
+            }
+            const targetName = pathArray[pathArray.length - 1];
+            await currentHandle.removeEntry(targetName, { recursive: true });
+            alert("Eliminato con successo!");
+            
+            targetTree = await handleDirectoryScan(targetDirectoryHandle);
+            executeCoreAnalysis();
+        } catch (err) {
+            console.error("Deletion failed", err);
+            alert("Errore durante l'eliminazione dei file.");
+        }
+    }
+
+    // --- DIRECT STRUCTURAL ALIGNMENT OPERATION ---
+    document.getElementById('btn-direct-fix').addEventListener('click', async () => {
+        if (!targetDirectoryHandle) return;
+        
+        // FORCE INTERACTIVE WRITE PERMISSION REQUEST FOR OPERATING SYSTEM FILESYSTEM MUTATION
+        const writeOptions = { mode: 'readwrite' };
+        if (await targetDirectoryHandle.queryPermission(writeOptions) !== 'granted') {
+            if (await targetDirectoryHandle.requestPermission(writeOptions) !== 'granted') {
+                alert("Operazione annullata: sono necessari i permessi di scrittura sulla cartella reale per poter allineare le strutture!");
+                return;
+            }
+        }
+
+        try {
+            if (currentRootName !== suggestedRootName) {
+                alert("Per rinominare la cartella principale, fallo manualmente sul sistema operativo in: " + suggestedRootName);
+            }
+
+            const activeJobCode = extractJobCode(currentRootName);
+            
+            let masterMachineKey = null;
+            for (const key in masterTree) {
+                if (key.toLowerCase().includes("master directory macchina")) {
+                    masterMachineKey = key;
+                    break;
+                }
+            }
+
+            // Core recursive creation machine
+            async function createMissingStructures(masterNode, targetHandle) {
+                for (const key in masterNode) {
+                    if (key === 'containedFiles') continue;
+                    
+                    const correctedKey = key.replace(/C0xxx/gi, activeJobCode);
+                    
+                    if (key === masterMachineKey) {
+                        const machinePattern = new RegExp(`^${activeJobCode}\\s*-\\s*\\d+\\s*.*|^${activeJobCode}-\\d+\\s*.*`, 'i');
+                        
+                        for await (const entry of targetHandle.values()) {
+                            if (entry.kind === 'directory' && machinePattern.test(entry.name)) {
+                                const realMachineHandle = await targetHandle.getDirectoryHandle(entry.name);
+                                if (masterNode[key].children) {
+                                    await createMissingStructures(masterNode[key].children, realMachineHandle);
+                                }
+                            }
+                        }
+                        continue;
+                    }
+
+                    // Force physical folder creation inside sub-directory tree structures
+                    let subHandle = await targetHandle.getDirectoryHandle(correctedKey, { create: true });
+                    
+                    if (masterNode[key].children) {
+                        await createMissingStructures(masterNode[key].children, subHandle);
+                    }
+                }
+            }
+
+            await createMissingStructures(masterTree, targetDirectoryHandle);
+            alert("Allineamento Struttura Completato con Successo!");
+            
+            // Reload and evaluate alignment state
+            targetTree = await handleDirectoryScan(targetDirectoryHandle);
+            executeCoreAnalysis();
+        } catch (err) {
+            console.error("Structural sync failed:", err);
+            alert("Errore durante la creazione fisica delle cartelle. Verifica i permessi del file system.");
+        }
+    });
+
+    // --- REPORT EXPORT LOGIC ---
+    document.getElementById('btn-export-json').addEventListener('click', () => {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(comparisonData, null, 2));
+        const dlAnchorElem = document.createElement('a');
+        dlAnchorElem.setAttribute("href", dataStr);
+        dlAnchorElem.setAttribute("download", `Report_Compliance_${currentRootName || 'Commessa'}.json`);
+        dlAnchorElem.click();
+    });
+
+    // --- SCAFFOLDER LINE BUILDER ENGINE ---
+    document.getElementById('btn-add-machine').addEventListener('click', () => {
+        const container = document.getElementById('machines-container');
+        const count = container.children.length + 1;
+        const paddedCount = String(count).padStart(2, '0');
+        
+        const div = document.createElement('div');
+        div.className = 'machine-item';
+        div.innerHTML = `
+            <input type="text" class="machine-id-input" placeholder="N°: ${paddedCount}" value="${paddedCount}">
+            <input type="text" class="machine-desc-input" placeholder="Tipo Macchina: Es. Nastro" value="">
+            <button type="button" class="btn-remove-machine">X</button>
+        `;
+        
+        div.querySelector('.btn-remove-machine').addEventListener('click', () => div.remove());
+        container.appendChild(div);
+    });
+
+    document.getElementById('btn-generate-commessa-direct').addEventListener('click', async () => {
+        const code = document.getElementById('new-project-code').value.toUpperCase().trim();
+        const customer = document.getElementById('new-project-customer').value.toUpperCase().trim();
+        
+        if (!code || !customer) {
+            alert("Inserisci codice commessa e nome cliente!");
+            return;
+        }
+
+        if (Object.keys(scaffolderMasterTree).length === 0) {
+            alert("Seleziona prima la cartella Master Modello nello Scaffolder!");
+            return;
+        }
+
+        try {
+            const zip = new fflate.Zip();
+            const rootFolderName = `${code} - ${customer}`;
+
+            let masterMachineKey = null;
+            for (const key in scaffolderMasterTree) {
+                if (key.toLowerCase().includes("master directory macchina")) {
+                    masterMachineKey = key;
+                    break;
+                }
+            }
+
+            async function addBranchToZip(masterNode, currentPathString) {
+                for (const key in masterNode) {
+                    if (key === 'containedFiles') continue;
+                    
+                    if (key === masterMachineKey) {
+                        const machineItems = document.querySelectorAll('.machine-item');
+                        for (const item of machineItems) {
+                            const mId = item.querySelector('.machine-id-input').value.trim();
+                            const mDesc = item.querySelector('.machine-desc-input').value.toUpperCase().trim();
+                            const machineFolderName = `${code}-${mId} - ${mDesc}`;
+                            
+                            const subPath = `${currentPathString}/${machineFolderName}`;
+                            zip[subPath + '/'] = new Uint8Array([0]); 
+                            
+                            await addBranchToZip(masterNode[key].children, subPath);
+                        }
+                    } else {
+                        const cleanKey = key.replace(/C0xxx/gi, code);
+                        const subPath = `${currentPathString}/${cleanKey}`;
+                        zip[subPath + '/'] = new Uint8Array([0]); 
+                        
+                        if (masterNode[key].children) {
+                            await addBranchToZip(masterNode[key].children, subPath);
+                        }
+                    }
+                }
+            }
+
+            zip[rootFolderName + '/'] = new Uint8Array([0]);
+            await addBranchToZip(scaffolderMasterTree, rootFolderName);
+
+            fflate.zip(zip, (err, data) => {
+                if (err) {
+                    alert("Errore nella compressione del pacchetto.");
+                    return;
+                }
+                const blob = new Blob([data], { type: 'application/zip' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${rootFolderName}.zip`;
+                a.click();
+                alert("Pacchetto ZIP generato con successo!");
+            });
+
+        } catch (err) {
+            console.error(err);
+            alert("Fallita la generazione della commessa.");
+        }
+    });
+</script>
+
+</body>
+</html>
