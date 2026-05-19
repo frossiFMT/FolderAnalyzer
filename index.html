@@ -1028,120 +1028,161 @@
 
     // --- SMART PLC PATTERN COMPLIANCE FILE ENGINE ---
         // --- RIFINED PLC PATTERN ENGINE (FORMATS AS CXXXX-XX PLC+HMI ...) ---// --- FIXED PLC PATTERN ENGINE (STRICT CXXXX-XX PARSING) ---
-    function compareFilesList(masterFiles, targetFiles, activeJobCode) {
-        const fileEvaluation = {};
-        const filteredMaster = masterFiles.filter(f => f.toLowerCase() !== "pippo.txt");
-        const filteredTarget = targetFiles.filter(f => f.toLowerCase() !== "pippo.txt");
+    // --- CORRECTED PLC PATTERN ENGINE (STRICT Cxxxxxx-NNNN PLC+HMI...) ---
+        function compareFilesList(masterFiles, targetFiles, activeJobCode) {
+            const fileEvaluation = {};
+            const filteredMaster = masterFiles.filter(f => f.toLowerCase() !== "pippo.txt");
+            const filteredTarget = targetFiles.filter(f => f.toLowerCase() !== "pippo.txt");
 
-        const masterExpectationsMap = {};
-        filteredMaster.forEach(mFile => {
-            const dynamicExpectedName = mFile.replace(/C0xxx/gi, activeJobCode);
-            masterExpectationsMap[dynamicExpectedName.toLowerCase()] = dynamicExpectedName;
-        });
+            const masterExpectationsMap = {};
+            filteredMaster.forEach(mFile => {
+                const dynamicExpectedName = mFile.replace(/C0xxx/gi, activeJobCode);
+                masterExpectationsMap[dynamicExpectedName.toLowerCase()] = dynamicExpectedName;
+            });
 
-        const unmatchedTargetFiles = [];
-        filteredTarget.forEach(tFile => {
-            const tFileLower = tFile.toLowerCase();
-            if (masterExpectationsMap[tFileLower]) {
-                const correctCaseName = masterExpectationsMap[tFileLower];
-                if (tFile !== correctCaseName) {
-                    fileEvaluation[tFile] = { 
-                        isDir: false, 
-                        status: 'rename-suggested', 
-                        renameTarget: correctCaseName 
-                    };
-                } else {
-                    fileEvaluation[tFile] = { isDir: false, status: 'match' };
-                }
-                delete masterExpectationsMap[tFileLower];
-            } else {
-                unmatchedTargetFiles.push(tFile);
-            }
-        });
-
-        unmatchedTargetFiles.forEach(tFile => {
-            if (fileEvaluation[tFile]) return; 
-
-            const extensionMatch = tFile.match(/\.(zip|zap\d*)$/i);
-            if (extensionMatch) {
-                const fileExt = extensionMatch[0]; 
-
-                let masterTemplateName = null;
-                for (const lowExp in masterExpectationsMap) {
-                    if (lowExp.includes("plc+hmi") || lowExp.includes(".zap")) {
-                        masterTemplateName = masterExpectationsMap[lowExp];
-                        break;
+            const unmatchedTargetFiles = [];
+            filteredTarget.forEach(tFile => {
+                const tFileLower = tFile.toLowerCase();
+                if (masterExpectationsMap[tFileLower]) {
+                    const correctCaseName = masterExpectationsMap[tFileLower];
+                    if (tFile !== correctCaseName) {
+                        fileEvaluation[tFile] = { 
+                            isDir: false, 
+                            status: 'rename-suggested', 
+                            renameTarget: correctCaseName 
+                        };
+                    } else {
+                        fileEvaluation[tFile] = { isDir: false, status: 'match' };
                     }
+                    delete masterExpectationsMap[tFileLower];
+                } else {
+                    unmatchedTargetFiles.push(tFile);
                 }
+            });
 
-                if (masterTemplateName) {
-                    // 1. EXTRACT AND RE-FORMAT JOB + MACHINE CODE (e.g., C000601-13082 -> C0006-01)
-                    let formattedJobPrefix = activeJobCode;
-                    
-                    // Matches "C" followed by digits, capturing the first 4 digits and next 2 digits if available
-                    const strictCleanRegex = /^([cC]\d{4})(\d{2})?/;
-                    const matchCode = tFile.match(strictCleanRegex);
+            unmatchedTargetFiles.forEach(tFile => {
+                if (fileEvaluation[tFile]) return; 
 
-                    if (matchCode) {
-                        const baseJob = matchCode[1].toUpperCase();
-                        const machineNum = matchCode[2];
+                const extensionMatch = tFile.match(/\.(zip|zap\d*)$/i);
+                if (extensionMatch) {
+                    const fileExt = extensionMatch[0]; 
+
+                    let masterTemplateName = null;
+                    for (const lowExp in masterExpectationsMap) {
+                        if (lowExp.includes("plc+hmi") || lowExp.includes(".zap")) {
+                            masterTemplateName = masterExpectationsMap[lowExp];
+                            break;
+                        }
+                    }
+
+                    if (masterTemplateName) {
+                        // 1. EXTRACT Cxxxxxx AND 4-DIGIT NUMBER (e.g., C000601-13082 -> C000601-1308)
+                        let formattedJobPrefix = activeJobCode;
                         
-                        if (machineNum) {
-                            formattedJobPrefix = `${baseJob}-${machineNum}`;
+                        // Regex captures: C + 6 digits (4 job + 2 machine), an optional separator, and at least 4 digits
+                        const strictPatternRegex = /^([cC]\d{6})[\s\-_]*(\d{4})/;
+                        const matchCode = tFile.match(strictPatternRegex);
+
+                        if (matchCode) {
+                            const fullCommessaMacchina = matchCode[1].toUpperCase();
+                            const fourDigitCode = matchCode[2]; // Takes exactly the first 4 digits captured
+                            formattedJobPrefix = `${fullCommessaMacchina}-${fourDigitCode}`;
                         } else {
-                            // Fallback context logic if machine number isn't attached directly to the base code
-                            const activeClean = activeJobCode.replace(/[\s\-_]/g, "");
-                            const contextMatch = activeClean.match(/^([cC]\d{4})(\d{2})?/);
-                            if (contextMatch && contextMatch[2]) {
-                                formattedJobPrefix = `${contextMatch[1].toUpperCase()}-${contextMatch[2]}`;
+                            // Fallback attempt: if the original file format was broken (e.g., 13167 PLC...)
+                            // try to build it using the active folder context
+                            const cleanContext = activeJobCode.replace(/[\s\-_]/g, "");
+                            const contextMatch = cleanContext.match(/^([cC]\d{6})/);
+                            if (contextMatch) {
+                                // Look for any 4-digit block inside the filename to use as the job number
+                                const isolatedFourDigits = tFile.match(/\b(\d{4})\b/);
+                                const jobNum = isolatedFourDigits ? isolatedFourDigits[1] : "0000";
+                                formattedJobPrefix = `${contextMatch[1].toUpperCase()}-${jobNum}`;
                             }
                         }
-                    }
 
-                    // 2. DATE EXTRACTION (YYYY-MM-DD)
-                    const dateRegex = /(\d{4})[\s\-_](\d{2})[\s\-_](\d{2})/;
-                    const dateMatch = tFile.match(dateRegex);
-                    let extractedDate = "2026-01-01"; 
-                    if (dateMatch) {
-                        extractedDate = `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`;
-                    } else {
-                        const softDateRegex = /\b(\d{8})\b/;
-                        const softMatch = tFile.match(softDateRegex);
-                        if (softMatch) {
-                            extractedDate = `${softMatch[1].substring(0,4)}-${softMatch[1].substring(4,6)}-${softMatch[1].substring(6,8)}`;
+                        // 2. DATE EXTRACTION (YYYY-MM-DD)
+                        const dateRegex = /(\d{4})[\s\-_](\d{2})[\s\-_](\d{2})/;
+                        const dateMatch = tFile.match(dateRegex);
+                        let extractedDate = "2026-01-01"; 
+                        if (dateMatch) {
+                            extractedDate = `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`;
+                        } else {
+                            const softDateRegex = /\b(\d{8})\b/;
+                            const softMatch = tFile.match(softDateRegex);
+                            if (softMatch) {
+                                extractedDate = `${softMatch[1].substring(0,4)}-${softMatch[1].substring(4,6)}-${softMatch[1].substring(6,8)}`;
+                            }
                         }
-                    }
 
-                    // 3. SURNAME EXTRACTION
-                    const nameWithoutExt = tFile.substring(0, tFile.lastIndexOf('.')).trim();
-                    const wordsToken = nameWithoutExt.split(/[\s\-_]+/);
-                    let extractedSurname = "Cognome";
-                    if (wordsToken.length > 0) {
-                        extractedSurname = wordsToken[wordsToken.length - 1];
-                        if (/^\d+$/.test(extractedSurname) && wordsToken.length > 1) {
-                            extractedSurname = wordsToken[wordsToken.length - 2];
+                        // 3. SURNAME EXTRACTION
+                        const nameWithoutExt = tFile.substring(0, tFile.lastIndexOf('.')).trim();
+                        const wordsToken = nameWithoutExt.split(/[\s\-_]+/);
+                        let extractedSurname = "Cognome";
+                        if (wordsToken.length > 0) {
+                            extractedSurname = wordsToken[wordsToken.length - 1];
+                            if (/^\d+$/.test(extractedSurname) && wordsToken.length > 1) {
+                                extractedSurname = wordsToken[wordsToken.length - 2];
+                            }
                         }
+                        
+                        extractedSurname = extractedSurname.charAt(0).toUpperCase() + extractedSurname.slice(1);
+
+                        // 4. COMPILE RIGID TARGET STANDARD NAME
+                        const compiledTargetStandard = `${formattedJobPrefix} PLC+HMI ${extractedDate} ${extractedSurname}${fileExt}`;
+
+                        if (tFile === compiledTargetStandard) {
+                            fileEvaluation[tFile] = { isDir: false, status: 'match' };
+                        } else {
+                            fileEvaluation[tFile] = {
+                                isDir: false,
+                                status: 'rename-suggested',
+                                renameTarget: compiledTargetStandard
+                            };
+                        }
+
+                        delete masterExpectationsMap[masterTemplateName.toLowerCase()];
+                        return;
                     }
-                    
-                    extractedSurname = extractedSurname.charAt(0).toUpperCase() + extractedSurname.slice(1);
-
-                    // 4. COMPILE RIGID TARGET STANDARD NAME
-                    const compiledTargetStandard = `${formattedJobPrefix} PLC+HMI ${extractedDate} ${extractedSurname}${fileExt}`;
-
-                    if (tFile === compiledTargetStandard) {
-                        fileEvaluation[tFile] = { isDir: false, status: 'match' };
-                    } else {
-                        fileEvaluation[tFile] = {
-                            isDir: false,
-                            status: 'rename-suggested',
-                            renameTarget: compiledTargetStandard
-                        };
-                    }
-
-                    delete masterExpectationsMap[masterTemplateName.toLowerCase()];
-                    return;
                 }
+
+                // General string similarity fallback matching rules for standard documents
+                let boundTargetMatchName = null;
+                const tFileLower = tFile.toLowerCase();
+
+                for (const lowerExpected in masterExpectationsMap) {
+                    const cleanExpected = masterExpectationsMap[lowerExpected];
+                    const targetExt = tFile.substring(tFile.lastIndexOf('.')).toLowerCase();
+                    const expectedExt = cleanExpected.substring(cleanExpected.lastIndexOf('.')).toLowerCase();
+
+                    if (targetExt === expectedExt && targetExt.length > 1) {
+                        const cleanT = tFileLower.replace(activeJobCode.toLowerCase(), "").replace(/[\s\-_]/g, "");
+                        const cleanE = lowerExpected.replace(activeJobCode.toLowerCase(), "").replace(/[\s\-_]/g, "");
+                        
+                        if (cleanT.includes(cleanE) || cleanE.includes(cleanT) || cleanT.substring(0,5) === cleanE.substring(0,5)) {
+                            boundTargetMatchName = cleanExpected;
+                            break;
+                        }
+                    }
+                }
+
+                if (boundTargetMatchName) {
+                    fileEvaluation[tFile] = {
+                        isDir: false,
+                        status: 'rename-suggested',
+                        renameTarget: boundTargetMatchName
+                    };
+                    delete masterExpectationsMap[boundTargetMatchName.toLowerCase()];
+                } else {
+                    fileEvaluation[tFile] = { isDir: false, status: 'extra' };
+                }
+            });
+
+            for (const lowerKey in masterExpectationsMap) {
+                fileEvaluation[masterExpectationsMap[lowerKey]] = { isDir: false, status: 'missing' };
             }
+
+            return fileEvaluation;
+        }
 
             // General string similarity fallback matching rules for standard documents
             let boundTargetMatchName = null;
